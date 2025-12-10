@@ -44,8 +44,9 @@ Planned / In progress:
 Mark-VII  
 https://github.com/daemon-001/Mark-VII  
 
-This project is an independent learning/demo work and is not affiliated with the original author.  
-本專案為獨立學習/示範用途，與原作者無任何隸屬或合作關係。
+This project is inspired by Mark-VII and is created for independent learning and demonstration purposes.
+Special thanks to the original author for their open-source contribution.  
+本專案取材自Mark-VII，作為個人獨立學習與示範用途，感謝原作者開源貢獻。
 
 ---
 
