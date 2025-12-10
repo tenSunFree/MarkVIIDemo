@@ -38,20 +38,6 @@ Planned / In progress:
 
 ---
 
-## Getting Started  
-## 快速開始  
-
-1. Clone this repository.  
-   下載本專案。  
-
-2. Open with Android Studio.  
-   使用 Android Studio 開啟。  
-
-3. Sync Gradle and run.  
-   同步 Gradle 後執行。  
-
----
-
 ## Credits  
 ## 取材與致謝  
   
