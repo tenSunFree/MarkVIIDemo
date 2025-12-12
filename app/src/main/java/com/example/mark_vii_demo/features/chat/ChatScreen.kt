@@ -101,9 +101,11 @@ import com.example.mark_vii_demo.features.chat.ApiProvider
 import com.example.mark_vii_demo.features.chat.ChatUiEvent
 import com.example.mark_vii_demo.features.chat.ChatViewModel
 import com.example.mark_vii_demo.features.chat.components.ModelChatItem
+import com.example.mark_vii_demo.features.chat.components.ModelMenuContent
 import com.example.mark_vii_demo.features.chat.components.PromptSuggestionBubbles
 import com.example.mark_vii_demo.features.chat.components.UserChatItem
 import com.example.mark_vii_demo.features.chat.components.getSelectedBitmap
+import com.example.mark_vii_demo.ui.theme.AppColors
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
 
 /**
@@ -732,153 +734,57 @@ fun ChatScreen(
                                             )
                                         }
 
-                                        if (currentModels.isEmpty()) {
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(vertical = 16.dp, horizontal = 16.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                                            ) {
-                                                Text(
-                                                    text = "No models available",
-                                                    color = appColors.textSecondary,
-                                                    fontSize = 14.sp,
-                                                    style = MaterialTheme.typography.bodyMedium
-                                                )
-
-                                                // Reload button only for OpenRouter
-                                                if (currentApiProvider == ApiProvider.OPENROUTER) {
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .clip(RoundedCornerShape(10.dp))
-                                                            .background(appColors.accent.copy(alpha = 0.15f))
-                                                            .clickable {
-                                                                ChatData.cachedFreeModels =
-                                                                    emptyList()
-                                                                ChatData.cachedFreeModelsKey = ""
-                                                                isLoadingModels = true
-
-                                                                coroutineScope.launch {
-                                                                    try {
-                                                                        val modelsCacheKey =
-                                                                            "$firebaseApiKey|${exceptionModels.hashCode()}"
-                                                                        freeModels =
-                                                                            ChatData.getOrFetchFreeModels(
-                                                                                modelsCacheKey
-                                                                            )
-                                                                        modelsLoadError =
-                                                                            if (freeModels.isEmpty())
-                                                                                "No free models available"
-                                                                            else null
-                                                                    } catch (e: Exception) {
-                                                                        modelsLoadError =
-                                                                            "Failed to load models: ${e.message}"
-                                                                    } finally {
-                                                                        isLoadingModels = false
-                                                                    }
-                                                                }
-                                                            }
-                                                            .padding(
-                                                                horizontal = 16.dp,
-                                                                vertical = 8.dp
-                                                            )
-                                                    ) {
-                                                        Row(
-                                                            horizontalArrangement = Arrangement.spacedBy(
-                                                                8.dp
-                                                            ),
-                                                            verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                            Icon(
-                                                                imageVector = Icons.Rounded.Refresh,
-                                                                contentDescription = "Reload models",
-                                                                tint = appColors.accent,
-                                                                modifier = Modifier.size(18.dp)
-                                                            )
-                                                            Text(
-                                                                text = "Reload Models",
-                                                                color = appColors.accent,
-                                                                fontSize = 13.sp,
-                                                                fontWeight = FontWeight.SemiBold
-                                                            )
+                                        // List of models
+                                        ModelMenuContent(
+                                            currentModels = currentModels,
+                                            currentApiProvider = currentApiProvider,
+                                            promptItemPosition = promptItemPosition.value,
+                                            appColors = appColors,
+                                            onReloadModels = if (currentApiProvider == ApiProvider.OPENROUTER) {
+                                                {
+                                                    // The corresponding false in finally
+                                                    isLoadingModels = true
+                                                    modelsLoadError = null
+                                                    ChatData.cachedFreeModels = emptyList()
+                                                    ChatData.cachedFreeModelsKey = ""
+                                                    coroutineScope.launch {
+                                                        try {
+                                                            val modelsCacheKey =
+                                                                "$firebaseApiKey|${exceptionModels.hashCode()}"
+                                                            freeModels =
+                                                                ChatData.getOrFetchFreeModels(
+                                                                    modelsCacheKey
+                                                                )
+                                                            modelsLoadError =
+                                                                if (freeModels.isEmpty()) "No free models available" else null
+                                                        } catch (e: Exception) {
+                                                            modelsLoadError =
+                                                                "Failed to load models: ${e.message}"
+                                                            Toast.makeText(
+                                                                context,
+                                                                modelsLoadError,
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        } finally {
+                                                            // Avoid loading freezes
+                                                            isLoadingModels = false
                                                         }
                                                     }
                                                 }
-                                            }
-                                        } else {
-                                            currentModels.forEachIndexed { index, model ->
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                                ) {
-                                                    DropdownMenuItem(
-                                                        text = {
-                                                            Row(
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                            ) {
-                                                                Box(
-                                                                    modifier = Modifier
-                                                                        .size(6.dp)
-                                                                        .clip(CircleShape)
-                                                                        .background(
-                                                                            if (model.isAvailable)
-                                                                                appColors.accent
-                                                                            else appColors.textSecondary
-                                                                        )
-                                                                )
-                                                                Spacer(modifier = Modifier.width(12.dp))
-                                                                Text(
-                                                                    text = model.displayName,
-                                                                    color = if (promptItemPosition.value == index)
-                                                                        appColors.accent
-                                                                    else MaterialTheme.colorScheme.onSurface,
-                                                                    fontSize = 15.sp,
-                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                    fontWeight = if (promptItemPosition.value == index)
-                                                                        FontWeight.SemiBold
-                                                                    else FontWeight.Normal
-                                                                )
-                                                            }
-                                                        },
-                                                        onClick = {
-                                                            isPromptDropDownExpanded.value = false
-                                                            promptItemPosition.value = index
-                                                            ChatData.selected_model = model.apiModel
-                                                            if (!model.isAvailable) {
-                                                                Toast.makeText(
-                                                                    context,
-                                                                    "Model temporarily unavailable",
-                                                                    Toast.LENGTH_SHORT
-                                                                ).show()
-                                                            }
-                                                        },
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .clip(RoundedCornerShape(12.dp))
-                                                            .background(
-                                                                if (promptItemPosition.value == index)
-                                                                    appColors.accent.copy(alpha = 0.1f)
-                                                                else appColors.surfaceVariant
-                                                            ),
-                                                        contentPadding = PaddingValues(
-                                                            horizontal = 12.dp,
-                                                            vertical = 12.dp
-                                                        ),
-                                                        colors = MenuDefaults.itemColors(
-                                                            textColor = MaterialTheme.colorScheme.onSurface,
-                                                            leadingIconColor = MaterialTheme.colorScheme.onSurface,
-                                                            trailingIconColor = MaterialTheme.colorScheme.onSurface,
-                                                            disabledTextColor = appColors.textSecondary,
-                                                            disabledLeadingIconColor = appColors.textSecondary,
-                                                            disabledTrailingIconColor = appColors.textSecondary
-                                                        )
-                                                    )
+                                            } else null,
+                                            onSelectModel = { index, model ->
+                                                isPromptDropDownExpanded.value = false
+                                                promptItemPosition.value = index
+                                                ChatData.selected_model = model.apiModel
+                                                if (!model.isAvailable) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Model temporarily unavailable",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
                                                 }
                                             }
-                                        }
+                                        )
                                     }
                                 }
                             }
