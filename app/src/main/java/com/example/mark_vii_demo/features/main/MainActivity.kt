@@ -73,7 +73,7 @@ import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
-import com.example.mark_vii_demo.ChatScreen
+import com.example.mark_vii_demo.features.chat.ChatScreen
 import com.example.mark_vii_demo.features.main.components.DrawerContent
 import com.example.mark_vii_demo.features.main.components.InfoSetting
 import com.example.mark_vii_demo.R

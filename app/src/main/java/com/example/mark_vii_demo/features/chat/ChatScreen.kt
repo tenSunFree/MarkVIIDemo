@@ -1,4 +1,4 @@
-package com.example.mark_vii_demo
+package com.example.mark_vii_demo.features.chat
 
 import android.content.Intent
 import android.speech.RecognizerIntent
@@ -8,6 +8,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
@@ -48,16 +49,14 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -80,47 +79,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mark_vii_demo.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
 import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.FirebaseConfigManager
 import com.example.mark_vii_demo.core.data.GeminiClient
 import com.example.mark_vii_demo.core.data.ModelInfo
-import com.example.mark_vii_demo.features.chat.ApiProvider
-import com.example.mark_vii_demo.features.chat.ChatUiEvent
-import com.example.mark_vii_demo.features.chat.ChatViewModel
 import com.example.mark_vii_demo.features.chat.components.ModelChatItem
 import com.example.mark_vii_demo.features.chat.components.ModelMenuContent
 import com.example.mark_vii_demo.features.chat.components.PromptSuggestionBubbles
 import com.example.mark_vii_demo.features.chat.components.UserChatItem
 import com.example.mark_vii_demo.features.chat.components.getSelectedBitmap
-import com.example.mark_vii_demo.ui.theme.AppColors
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
 
-/**
- * 抽離後的 ChatScreen
- * chat home screen ui starts here
- *
- * 你原本在 MainActivity 內的 ChatScreen 會直接用到 Activity 的:
- * - uriState
- * - voiceInputState
- * - imagePicker
- * - voiceInputLauncher
- * - textToSpeech / isTtsInitialized / speakText
- *
- * 抽離成檔案後，這些必須透過參數傳入。
- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun ChatScreen(
@@ -151,7 +136,7 @@ fun ChatScreen(
     LaunchedEffect(hapticTrigger) {
         if (hapticTrigger > 0L && hapticTrigger != lastHapticTrigger.value) {
             hapticFeedback.performHapticFeedback(
-                androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove
+                HapticFeedbackType.TextHandleMove
             )
             lastHapticTrigger.value = hapticTrigger
         }
@@ -236,7 +221,7 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    androidx.compose.material3.CircularProgressIndicator(
+                    CircularProgressIndicator(
                         modifier = Modifier.size(60.dp),
                         color = appColors.accent,
                         strokeWidth = 4.dp
@@ -343,7 +328,7 @@ fun ChatScreen(
                     items = chatState.chatList,
                     key = { _, chat -> chat.id }
                 ) { index, chat ->
-                    androidx.compose.animation.AnimatedVisibility(
+                    AnimatedVisibility(
                         visible = true,
                         enter = fadeIn(animationSpec = tween(300)) +
                                 slideInVertically(
@@ -490,6 +475,7 @@ fun ChatScreen(
             }
 
             // ================ Enhanced Visible Input Box ================
+            // Bottom input bar component
             Column {
                 Box(
                     modifier = Modifier
@@ -532,7 +518,7 @@ fun ChatScreen(
                                     color = appColors.textSecondary
                                 )
                             },
-                            textStyle = androidx.compose.ui.text.TextStyle(
+                            textStyle = TextStyle(
                                 fontSize = 15.sp,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 20.sp
@@ -593,7 +579,7 @@ fun ChatScreen(
                                         style = MaterialTheme.typography.bodyMedium,
                                         lineHeight = 13.sp,
                                         maxLines = 1,
-                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.weight(1f, fill = false)
                                     )
 
