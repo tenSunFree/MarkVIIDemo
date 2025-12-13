@@ -393,7 +393,8 @@ class ChatViewModel : ViewModel() {
                             prompt = prompt,
                             conversationHistory = conversationHistory
                         ) { chunk ->
-                            chunkCount++
+                            // Log.d("more", "ChatViewModel, getResponse, getStreamingResponse, chunk: $chunk")
+                            // chunkCount++
                             _chatState.update { state ->
                                 val updatedList = state.chatList.toMutableList()
                                 if (updatedList.isNotEmpty()) {

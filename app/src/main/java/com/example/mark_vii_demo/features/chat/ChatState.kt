@@ -18,7 +18,7 @@ data class ChatState (
     val error: ErrorInfo? = null,
     val isGeneratingResponse: Boolean = false,
     val showPromptSuggestions: Boolean = true,
-    val currentApiProvider: ApiProvider = ApiProvider.GEMINI, // Gemini as default
+    val currentApiProvider: ApiProvider = ApiProvider.OPENROUTER, // OpenRouter as default
     val hapticTrigger: Long = 0L, // Timestamp to trigger haptic feedback on chunk arrival
     
     // Authentication and session management

@@ -316,6 +316,7 @@ fun ChatScreen(
                 }
             }
 
+            // Chat list
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()

@@ -156,226 +156,6 @@ object ChatData {
     }
 
     /**
-     * Convert Bitmap to Base64 string for API
-     */
-    private fun bitmapToBase64(bitmap: Bitmap): String {
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-        val byteArray = outputStream.toByteArray()
-        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
-    }
-
-    suspend fun getResponse(prompt: String): Chat {
-        try {
-            // Check if API key is loaded
-            if (openrouter_api_key.isEmpty()) {
-                throw Exception("API_KEY_MISSING|API key is not configured")
-            }
-
-            // Use a valid default model if none selected
-            val modelToUse = when {
-                selected_model.isNotEmpty() -> selected_model
-                else -> "anthropic/claude-3-5-sonnet-20241022" // Updated model name
-            }
-
-            val request = OpenRouterRequest(
-                model = modelToUse,
-                messages = listOf(
-                    Message(
-                        role = "user",
-                        content = listOf(
-                            Content(
-                                type = "text",
-                                text = prompt
-                            )
-                        )
-                    )
-                ),
-                max_tokens = 3000,
-                temperature = 0.7
-            )
-
-            val response = withContext(Dispatchers.IO) {
-                OpenRouterClient.api.chatCompletion(request)
-            }
-
-            // Check for errors
-            if (response.error != null) {
-                val errorMsg = when {
-                    response.error.message.contains("401") || response.error.message.contains("Unauthorized") ->
-                        "HTTP_401|HTTP 401: Unauthorized - API key is invalid or missing"
-
-                    response.error.message.contains("404") || response.error.message.contains("Not Found") ->
-                        "HTTP_404|HTTP 404: Model Not Found - The model '$modelToUse' doesn't exist"
-
-                    else -> "API_ERROR|${response.error.message}"
-                }
-                throw Exception(errorMsg)
-            }
-
-            // Get response text
-            val responseText = response.choices?.firstOrNull()?.message?.content
-                ?: "No response received"
-
-            return Chat(
-                prompt = responseText,
-                bitmap = null,
-                isFromUser = false,
-                modelUsed = modelToUse
-            )
-
-        } catch (e: Exception) {
-            // Re-throw if already formatted
-            if (e.message?.contains("|") == true) {
-                throw e
-            }
-
-            // Handle HTTP errors with specific codes
-            val errorMessage = when {
-                e is HttpException -> {
-                    when (e.code()) {
-                        400 -> "BAD_REQUEST|Invalid request parameters or CORS issue"
-                        401 -> "UNAUTHORIZED|Invalid API key or expired session"
-                        402 -> "INSUFFICIENT_CREDITS|Your account has insufficient credits"
-                        403 -> "CONTENT_FLAGGED|Your input was flagged by moderation"
-                        404 -> {
-                            // Model not found - try adding :free postfix
-                            val modelToUse = when {
-                                selected_model.isNotEmpty() -> selected_model
-                                else -> "anthropic/claude-3-5-sonnet-20241022"
-                            }
-
-                            // If model doesn't have :free, add it to exception list and retry
-                            if (!modelToUse.endsWith(":free", ignoreCase = true)) {
-                                val fixedModel = handle404Error(modelToUse)
-                                "MODEL_404_RETRY|Model not found. Retrying with corrected ID: $fixedModel"
-                            } else {
-                                "MODEL_NOT_FOUND|Model not available: $modelToUse"
-                            }
-                        }
-
-                        408 -> "REQUEST_TIMEOUT|Your request timed out. Try again"
-                        429 -> "RATE_LIMITED|Too many requests. Please wait and retry"
-                        502 -> "MODEL_DOWN|Model is currently unavailable or returned invalid response"
-                        503 -> "NO_PROVIDER|No available model provider meets your requirements"
-                        else -> "HTTP_ERROR|Error ${e.code()}: ${e.message()}"
-                    }
-                }
-
-                e is SocketTimeoutException -> "TIMEOUT|Request timed out. Check your connection"
-                e is UnknownHostException -> "NO_INTERNET|No internet connection available"
-                e is ConnectException -> "CONNECTION_FAILED|Could not connect to server"
-                e is IOException -> "NETWORK_ERROR|Network error: ${e.message}"
-                else -> "UNKNOWN_ERROR|${e.message ?: "An unexpected error occurred"}"
-            }
-
-            throw Exception(errorMessage)
-        }
-    }
-
-    suspend fun getResponseWithImage(prompt: String, bitmap: Bitmap): Chat {
-        try {
-            // Convert bitmap to base64
-            val base64Image = bitmapToBase64(bitmap)
-            val dataUrl = "data:image/jpeg;base64,$base64Image"
-
-            // Use a valid default model if none selected
-            val modelToUse = when {
-                selected_model.isNotEmpty() -> selected_model
-                else -> "anthropic/claude-3-5-sonnet-20241022" // Updated model name
-            }
-
-            val request = OpenRouterRequest(
-                model = modelToUse,
-                messages = listOf(
-                    Message(
-                        role = "user",
-                        content = listOf(
-                            Content(
-                                type = "image_url",
-                                image_url = ImageUrl(url = dataUrl)
-                            ),
-                            Content(
-                                type = "text",
-                                text = prompt
-                            )
-                        )
-                    )
-                ),
-                max_tokens = 3000,
-                temperature = 0.7
-            )
-
-            val response = withContext(Dispatchers.IO) {
-                OpenRouterClient.api.chatCompletion(request)
-            }
-
-            // Check for errors
-            if (response.error != null) {
-                throw Exception("API_ERROR|Error: ${response.error.message}")
-            }
-
-            // Get response text
-            val responseText = response.choices?.firstOrNull()?.message?.content
-                ?: "No response received"
-
-            return Chat(
-                prompt = responseText,
-                bitmap = null,
-                isFromUser = false,
-                modelUsed = modelToUse
-            )
-
-        } catch (e: Exception) {
-            // Re-throw if already formatted
-            if (e.message?.contains("|") == true) {
-                throw e
-            }
-
-            // Handle HTTP errors with specific codes
-            val errorMessage = when {
-                e is HttpException -> {
-                    when (e.code()) {
-                        400 -> "BAD_REQUEST|Invalid request parameters or CORS issue"
-                        401 -> "UNAUTHORIZED|Invalid API key or expired session"
-                        402 -> "INSUFFICIENT_CREDITS|Your account has insufficient credits"
-                        403 -> "CONTENT_FLAGGED|Your input was flagged by moderation"
-                        404 -> {
-                            // Model not found - try adding :free postfix
-                            val modelToUse = when {
-                                selected_model.isNotEmpty() -> selected_model
-                                else -> "anthropic/claude-3-5-sonnet-20241022"
-                            }
-
-                            // If model doesn't have :free, add it to exception list and retry
-                            if (!modelToUse.endsWith(":free", ignoreCase = true)) {
-                                val fixedModel = handle404Error(modelToUse)
-                                "MODEL_404_RETRY|Model not found. Retrying with corrected ID: $fixedModel"
-                            } else {
-                                "MODEL_NOT_FOUND|Model not available: $modelToUse"
-                            }
-                        }
-
-                        408 -> "REQUEST_TIMEOUT|Your request timed out. Try again"
-                        429 -> "RATE_LIMITED|Too many requests. Please wait and retry"
-                        502 -> "MODEL_DOWN|Model is currently unavailable or returned invalid response"
-                        503 -> "NO_PROVIDER|No available model provider meets your requirements"
-                        else -> "HTTP_ERROR|Error ${e.code()}: ${e.message()}"
-                    }
-                }
-
-                e is SocketTimeoutException -> "TIMEOUT|Request timed out. Check your connection"
-                e is UnknownHostException -> "NO_INTERNET|No internet connection available"
-                e is ConnectException -> "CONNECTION_FAILED|Could not connect to server"
-                e is IOException -> "NETWORK_ERROR|Network error: ${e.message}"
-                else -> "UNKNOWN_ERROR|${e.message ?: "An unexpected error occurred"}"
-            }
-
-            throw Exception(errorMessage)
-        }
-    }
-
-    /**
      * Get streaming response from AI model with conversation history
      * Yields partial responses as they are generated
      */
@@ -384,21 +164,21 @@ object ChatData {
         conversationHistory: List<Chat> = emptyList(),
         onChunk: (String) -> Unit
     ): Chat = withContext(Dispatchers.IO) {
+        // Log.d("more", "ChatData, getStreamingResponse, prompt: $prompt")
+        // Log.d("more", "ChatData, getStreamingResponse, conversationHistory.size: ${conversationHistory.size}")
+        // Log.d("more", "ChatData, getStreamingResponse, conversationHistory: $conversationHistory")
         try {
             // Check if API key is loaded
             if (openrouter_api_key.isEmpty()) {
                 throw Exception("API_KEY_MISSING|API key is not configured")
             }
-
             // Use a valid default model if none selected
             val modelToUse = when {
                 selected_model.isNotEmpty() -> selected_model
                 else -> "anthropic/claude-3-5-sonnet-20241022"
             }
-
             // Build messages array from conversation history
             val messages = mutableListOf<Message>()
-
             // Add conversation history (limit to last 6 messages for faster response)
             conversationHistory.takeLast(6).forEach { chat ->
                 messages.add(
@@ -413,7 +193,6 @@ object ChatData {
                     )
                 )
             }
-
             // Add current prompt as the latest user message
             messages.add(
                 Message(
@@ -426,7 +205,6 @@ object ChatData {
                     )
                 )
             )
-
             val request = OpenRouterRequest(
                 model = modelToUse,
                 messages = messages,
@@ -434,10 +212,8 @@ object ChatData {
                 temperature = 0.7,
                 stream = true
             )
-
             val responseBody = OpenRouterClient.api.chatCompletionStream(request)
             val fullResponse = StringBuilder()
-
             // Read SSE stream with better error handling
             try {
                 responseBody.byteStream().bufferedReader().use { reader ->
@@ -445,14 +221,12 @@ object ChatData {
                         if (line.startsWith("data: ")) {
                             val data = line.substring(6)
                             if (data == "[DONE]") return@forEach
-
                             try {
                                 val json = Gson().fromJson(data, JsonObject::class.java)
                                 val delta = json.getAsJsonArray("choices")
                                     ?.get(0)?.asJsonObject
                                     ?.getAsJsonObject("delta")
                                     ?.get("content")?.asString
-
                                 if (delta != null) {
                                     fullResponse.append(delta)
                                     withContext(Dispatchers.Main) {
@@ -477,20 +251,17 @@ object ChatData {
                 }
                 throw Exception("NETWORK_ERROR|Connection interrupted: ${e.message ?: "Network error"}")
             }
-
             return@withContext Chat(
                 prompt = fullResponse.toString(),
                 bitmap = null,
                 isFromUser = false,
                 modelUsed = modelToUse
             )
-
         } catch (e: Exception) {
             // Re-throw if already formatted
             if (e.message?.contains("|") == true) {
                 throw e
             }
-
             // Handle HTTP errors with specific codes
             val errorMessage = when {
                 e is HttpException -> {
@@ -505,7 +276,6 @@ object ChatData {
                                 selected_model.isNotEmpty() -> selected_model
                                 else -> "anthropic/claude-3-5-sonnet-20241022"
                             }
-
                             // If model doesn't have :free, add it to exception list and retry
                             if (!modelToUse.endsWith(":free", ignoreCase = true)) {
                                 val fixedModel = handle404Error(modelToUse)
@@ -514,7 +284,6 @@ object ChatData {
                                 "MODEL_NOT_FOUND|Model not available: $modelToUse"
                             }
                         }
-
                         408 -> "REQUEST_TIMEOUT|Your request timed out. Try again"
                         429 -> "RATE_LIMITED|Too many requests. Please wait and retry"
                         502 -> "MODEL_DOWN|Model is currently unavailable or returned invalid response"
@@ -522,14 +291,12 @@ object ChatData {
                         else -> "HTTP_ERROR|Error ${e.code()}: ${e.message()}"
                     }
                 }
-
                 e is SocketTimeoutException -> "TIMEOUT|Request timed out. Check your connection"
                 e is UnknownHostException -> "NO_INTERNET|No internet connection available"
                 e is ConnectException -> "CONNECTION_FAILED|Could not connect to server"
                 e is IOException -> "NETWORK_ERROR|Network error: ${e.message}"
                 else -> "UNKNOWN_ERROR|${e.message ?: "An unexpected error occurred"}"
             }
-
             throw Exception(errorMessage)
         }
     }

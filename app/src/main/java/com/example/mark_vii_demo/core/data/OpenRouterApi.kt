@@ -101,9 +101,6 @@ data class ModelProvider(
  */
 interface OpenRouterApiService {
     @POST("chat/completions")
-    suspend fun chatCompletion(@Body request: OpenRouterRequest): OpenRouterResponse
-    
-    @POST("chat/completions")
     suspend fun chatCompletionStream(@Body request: OpenRouterRequest): ResponseBody
     
     @GET("models")
