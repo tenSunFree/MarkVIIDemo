@@ -83,6 +83,7 @@ import com.example.mark_vii_demo.core.data.ChatHistoryManager
 import com.example.mark_vii_demo.core.data.ThemePreferences
 import com.example.mark_vii_demo.features.chat.ChatUiEvent
 import com.example.mark_vii_demo.features.chat.ChatViewModel
+import com.example.mark_vii_demo.features.main.components.MainTopBar
 import com.example.mark_vii_demo.features.setting.SettingsScreen
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
 import com.example.mark_vii_demo.ui.theme.MarkVIITheme
@@ -246,127 +247,12 @@ class MainActivity : AppCompatActivity() {
                                     Scaffold(
 //                                top bar items
                                         topBar = {
-                                            var showClearDialog by remember { mutableStateOf(false) }
-                                            // Optimize: Only collect user state, not entire chat state to prevent lag during streaming
-                                            val currentUser by AuthManager.currentUser.collectAsState()
-
-                                            Box(
-                                                modifier = Modifier.Companion
-                                                    .fillMaxWidth()
-                                                    .background(appColors.topBarBackground)
-                                                    .height(64.dp)
-                                                    .padding(horizontal = 12.dp)
-                                            ) {
-                                                Row(
-                                                    modifier = Modifier.Companion.fillMaxSize(),
-                                                    verticalAlignment = Alignment.Companion.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween
-                                                ) {
-                                                    // Left side: Drawer Icon / Profile Picture + Title
-                                                    Row(
-                                                        verticalAlignment = Alignment.Companion.CenterVertically,
-                                                        horizontalArrangement = Arrangement.Start,
-                                                        modifier = Modifier.Companion.weight(1f)
-                                                    ) {
-                                                        // Drawer Icon / Profile Picture
-                                                        IconButton(
-                                                            onClick = {
-                                                                coroutineScope.launch {
-                                                                    if (drawerState.isOpen) {
-                                                                        drawerState.close()
-                                                                    } else {
-                                                                        drawerState.open()
-                                                                    }
-                                                                }
-                                                            },
-                                                            modifier = Modifier.Companion.size(48.dp)
-                                                        ) {
-                                                            val user = currentUser
-                                                            if (user?.photoUrl != null) {
-                                                                // User Profile Picture
-                                                                Image(
-                                                                    painter = rememberAsyncImagePainter(
-                                                                        model = ImageRequest.Builder(
-                                                                            LocalContext.current
-                                                                        ).data(user.photoUrl)
-                                                                            .crossfade(true).build()
-                                                                    ),
-                                                                    contentDescription = "Profile",
-                                                                    contentScale = ContentScale.Companion.Crop,
-                                                                    modifier = Modifier.Companion
-                                                                        .size(32.dp)
-                                                                        .clip(CircleShape)
-                                                                        .border(
-                                                                            1.dp,
-                                                                            appColors.accent,
-                                                                            CircleShape
-                                                                        )
-                                                                )
-                                                            } else {
-                                                                // Standard Hamburger Menu
-                                                                Icon(
-                                                                    imageVector = Icons.Rounded.Menu,
-                                                                    contentDescription = "Menu",
-                                                                    tint = appColors.accent,
-                                                                    modifier = Modifier.Companion.size(
-                                                                        24.dp
-                                                                    )
-                                                                )
-                                                            }
-                                                        }
-
-                                                        Spacer(modifier = Modifier.Companion.width(8.dp))
-
-                                                        // Title with custom font
-                                                        Text(
-                                                            text = "MARK",
-                                                            fontSize = 24.sp,
-                                                            fontFamily = FontFamily(Font(R.font.typographica)),
-                                                            color = MaterialTheme.colorScheme.onSurface,
-                                                            letterSpacing = 1.sp
-                                                        )
-                                                        Spacer(modifier = Modifier.Companion.width(6.dp))
-                                                        Text(
-                                                            text = "VII",
-                                                            fontSize = 24.sp,
-                                                            fontFamily = FontFamily(Font(R.font.typographica)),
-                                                            color = appColors.accent,
-                                                            letterSpacing = 1.sp
-                                                        )
-                                                    }
-
-                                                    // Right side: Action icons
-                                                    Row(
-                                                        horizontalArrangement = Arrangement.spacedBy(
-                                                            4.dp
-                                                        ),
-                                                        verticalAlignment = Alignment.Companion.CenterVertically
-                                                    ) {
-                                                        // Info icon (Lottie animation)
-                                                        val composition by rememberLottieComposition(
-                                                            spec = LottieCompositionSpec.RawRes(R.raw.info_card)
-                                                        )
-                                                        Box(
-                                                            modifier = Modifier.Companion
-                                                                .size(48.dp)
-                                                                .clickable {
-                                                                    navController.navigate(
-                                                                        "info_screen"
-                                                                    )
-                                                                },
-                                                            contentAlignment = Alignment.Companion.Center
-                                                        ) {
-                                                            LottieAnimation(
-                                                                composition = composition,
-                                                                modifier = Modifier.Companion.size(
-                                                                    48.dp
-                                                                ),
-                                                                iterations = LottieConstants.IterateForever
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            }
+                                            MainTopBar(
+                                                drawerState = drawerState,
+                                                navController = navController,
+                                                title = "ChatGPT",
+                                                actionText = "登入",
+                                            )
                                         },
 
 //                                    Show welcome guide once when app opens (no API call)
