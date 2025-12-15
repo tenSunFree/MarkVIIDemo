@@ -99,6 +99,7 @@ import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.FirebaseConfigManager
 import com.example.mark_vii_demo.core.data.GeminiClient
 import com.example.mark_vii_demo.core.data.ModelInfo
+import com.example.mark_vii_demo.features.chat.components.ChatQuickActionsPanel
 import com.example.mark_vii_demo.features.chat.components.ModelChatItem
 import com.example.mark_vii_demo.features.chat.components.ModelMenuContent
 import com.example.mark_vii_demo.features.chat.components.PromptSuggestionBubbles
@@ -308,9 +309,9 @@ fun ChatScreen(
                         .padding(bottom = 140.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    PromptSuggestionBubbles(
-                        onSuggestionClick = { suggestion ->
-                            chatViewModel.onEvent(ChatUiEvent.UpdatePrompt(suggestion))
+                    ChatQuickActionsPanel(
+                        onActionClick = { text ->
+                            chatViewModel.onEvent(ChatUiEvent.UpdatePrompt(text))
                         }
                     )
                 }
