@@ -59,7 +59,7 @@ fun ChatGptTopBar(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .size(48.dp)
+                .size(42.dp)
                 .clip(CircleShape)
                 .background(menuBg)
                 .border(1.dp, menuBorder, CircleShape)
@@ -73,14 +73,14 @@ fun ChatGptTopBar(
             text = title,
             modifier = Modifier.align(Alignment.Center),
             color = Color.White,
-            fontSize = 28.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold
         )
         // Right：Login capsule
         Surface(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .height(42.dp)
+                .height(30.dp)
                 .clickable(onClick = onActionClick),
             shape = RoundedCornerShape(999.dp),
             color = Color.White,
@@ -88,13 +88,13 @@ fun ChatGptTopBar(
             shadowElevation = 0.dp
         ) {
             Box(
-                modifier = Modifier.padding(horizontal = 22.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = actionText,
                     color = Color.Black,
-                    fontSize = 22.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -110,23 +110,17 @@ private fun HamburgerIcon(
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start
     ) {
         Box(
             Modifier
-                .width(22.dp)
+                .width(18.dp)
                 .height(2.dp)
                 .background(color, RoundedCornerShape(2.dp))
         )
         Box(
             Modifier
-                .width(22.dp)
-                .height(2.dp)
-                .background(color, RoundedCornerShape(2.dp))
-        )
-        Box(
-            Modifier
-                .width(22.dp)
+                .width(13.dp)
                 .height(2.dp)
                 .background(color, RoundedCornerShape(2.dp))
         )
