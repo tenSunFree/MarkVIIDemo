@@ -1,6 +1,7 @@
 package com.example.mark_vii_demo.features.chat.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,11 +27,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mark_vii_demo.R
 
 /**
  * ChatQuickActionsPanel
@@ -52,16 +57,14 @@ fun ChatQuickActionsPanel(
     onActionClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val actions = remember {
-        listOf(
-            QuickAction("幫我寫", Icons.Outlined.Edit, Color(0xFFB18CFF)),
-            QuickAction("分析資料", Icons.Outlined.BarChart, Color(0xFF62D0FF)),
-            QuickAction("程式碼", Icons.Outlined.Code, Color(0xFF7C8DFF)),
-            QuickAction("構思", Icons.Outlined.Lightbulb, Color(0xFFFFD54A)),
-            QuickAction("總結文字", Icons.Outlined.Description, Color(0xFFFFA24A)),
-            QuickAction("更多", null, Color(0xFFB0B0B0)),
-        )
-    }
+    val actions = listOf(
+        QuickAction("幫我寫", painterResource(R.drawable.chat_help_write)),
+        QuickAction("分析資料", painterResource(R.drawable.chat_analysis_data)),
+        QuickAction("程式碼", painterResource(R.drawable.chat_code)),
+        QuickAction("構思", painterResource(R.drawable.chat_idea)),
+        QuickAction("總結文字", painterResource(R.drawable.chat_summary_text)),
+        QuickAction("更多", null),
+    )
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -98,8 +101,7 @@ fun ChatQuickActionsPanel(
 
 private data class QuickAction(
     val label: String,
-    val icon: ImageVector?,
-    val iconTint: Color,
+    val icon: Painter?,
 )
 
 @Composable
@@ -128,10 +130,10 @@ private fun ActionPill(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             action.icon?.let { icon ->
-                Icon(
-                    imageVector = icon,
+                Image(
+                    painter = icon,
                     contentDescription = action.label,
-                    tint = action.iconTint,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier.size(20.dp)
                 )
             }
