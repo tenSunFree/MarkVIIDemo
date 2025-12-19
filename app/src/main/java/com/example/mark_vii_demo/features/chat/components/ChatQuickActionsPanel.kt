@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,12 +67,11 @@ fun ChatQuickActionsPanel(
         QuickAction("更多", null),
     )
     Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
+        modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "我可以為你做什麼？",
-            fontSize = 34.sp,
+            fontSize = 22.sp,
             fontWeight = FontWeight.SemiBold,
             color = Color.White,
         )
@@ -109,8 +109,8 @@ private fun ActionPill(
     action: QuickAction,
     onClick: (String) -> Unit,
 ) {
-    val bg = Color(0xFF141414)
-    val border = Color(0xFF2A2A2A)
+    val bg = Color(0xFF000000)
+    val border = Color(0xFF121212)
     val text = Color(0xFFBDBDBD)
     Surface(
         color = bg,
@@ -119,13 +119,10 @@ private fun ActionPill(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
         modifier = Modifier
-            .height(52.dp)
-            .wrapContentWidth()
-            .clickable { onClick(action.label) }
-    ) {
+            .wrapContentSize()
+            .clickable { onClick(action.label) }) {
         Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp),
+            modifier = Modifier.padding(horizontal = 15.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -140,7 +137,7 @@ private fun ActionPill(
             Text(
                 text = action.label,
                 color = text,
-                fontSize = 16.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

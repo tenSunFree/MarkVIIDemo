@@ -306,7 +306,7 @@ fun ChatScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 140.dp),
+                        .padding(bottom = 75.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     ChatQuickActionsPanel(
