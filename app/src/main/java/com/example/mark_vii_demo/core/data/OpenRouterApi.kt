@@ -137,8 +137,8 @@ object OpenRouterClient {
                         addHeader("Authorization", "Bearer $apiKey")
                     }
                 }
-                .addHeader("HTTP-Referer", "https://github.com/daemon-001/Mark-VII")
-                .addHeader("X-Title", "Mark-VII")
+                // .addHeader("HTTP-Referer", "https://github.com/daemon-001/Mark-VII")
+                // .addHeader("X-Title", "Mark-VII")
                 .addHeader("Content-Type", "application/json")
                 .build()
             chain.proceed(request)

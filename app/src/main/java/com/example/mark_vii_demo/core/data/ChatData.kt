@@ -76,6 +76,7 @@ object ChatData {
             // Log.d("more", "ChatData, fetchFreeModels, allModels: ${allModels}");
             allModels.forEach {
                 Log.d("more", "ChatData, fetchFreeModels, displayName: ${it.name}");
+                Log.d("more", "ChatData, fetchFreeModels, it: ${it}");
             }
 
             // Use a map to deduplicate models by base ID (without :free suffix)

@@ -648,36 +648,37 @@ fun ChatScreen(
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .clip(RoundedCornerShape(10.dp))
-                                                        .background(
-                                                            if (currentApiProvider == ApiProvider.GEMINI)
-                                                                appColors.accent.copy(alpha = 0.2f)
-                                                            else appColors.surfaceTertiary
-                                                        )
-                                                        .clickable {
-                                                            chatViewModel.onEvent(
-                                                                ChatUiEvent.SwitchApiProvider(
-                                                                    ApiProvider.GEMINI
-                                                                )
-                                                            )
-                                                        }
-                                                        .padding(vertical = 8.dp),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text(
-                                                        text = "Gemini",
-                                                        color = if (currentApiProvider == ApiProvider.GEMINI)
-                                                            appColors.accent
-                                                        else appColors.textSecondary,
-                                                        fontSize = 13.sp,
-                                                        fontWeight = if (currentApiProvider == ApiProvider.GEMINI)
-                                                            FontWeight.SemiBold
-                                                        else FontWeight.Normal
-                                                    )
-                                                }
+                                                // Hide Gemini models list
+                                                // Box(
+                                                //     modifier = Modifier
+                                                //         .weight(1f)
+                                                //         .clip(RoundedCornerShape(10.dp))
+                                                //         .background(
+                                                //             if (currentApiProvider == ApiProvider.GEMINI)
+                                                //                 appColors.accent.copy(alpha = 0.2f)
+                                                //             else appColors.surfaceTertiary
+                                                //         )
+                                                //         .clickable {
+                                                //             chatViewModel.onEvent(
+                                                //                 ChatUiEvent.SwitchApiProvider(
+                                                //                     ApiProvider.GEMINI
+                                                //                 )
+                                                //             )
+                                                //         }
+                                                //         .padding(vertical = 8.dp),
+                                                //     contentAlignment = Alignment.Center
+                                                // ) {
+                                                //     Text(
+                                                //         text = "Gemini",
+                                                //         color = if (currentApiProvider == ApiProvider.GEMINI)
+                                                //             appColors.accent
+                                                //         else appColors.textSecondary,
+                                                //         fontSize = 13.sp,
+                                                //         fontWeight = if (currentApiProvider == ApiProvider.GEMINI)
+                                                //             FontWeight.SemiBold
+                                                //         else FontWeight.Normal
+                                                //     )
+                                                // }
 
                                                 Spacer(modifier = Modifier.width(8.dp))
 
