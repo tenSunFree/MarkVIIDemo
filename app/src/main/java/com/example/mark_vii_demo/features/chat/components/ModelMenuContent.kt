@@ -1,5 +1,6 @@
 package com.example.mark_vii_demo.features.chat.components
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,10 @@ fun ModelMenuContent(
     onReloadModels: (() -> Unit)?,
     onSelectModel: (index: Int, model: ModelInfo) -> Unit,
 ) {
+    // Log.d("more", "ModelMenuContent, currentModels: ${currentModels.size}")
+    // Log.d("more", "ModelMenuContent, currentModels[0].displayName: ${currentModels[0].displayName}")
+    // Log.d("more", "ModelMenuContent, currentModels[1].displayName: ${currentModels[1].displayName}")
+    // Log.d("more", "ModelMenuContent, currentModels[2].displayName: ${currentModels[2].displayName}")
     if (currentModels.isEmpty()) {
         Column(
             modifier = Modifier

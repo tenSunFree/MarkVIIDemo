@@ -251,27 +251,27 @@ fun ChatScreen(
     val currentApiProvider = chatState.currentApiProvider
 
     // Switch models based on API provider
-    val currentModels = when (currentApiProvider) {
-        ApiProvider.OPENROUTER -> freeModels
-        ApiProvider.GEMINI -> geminiModels
-    }
+    // val currentModels = when (currentApiProvider) {
+    //     ApiProvider.OPENROUTER -> freeModels
+    //     ApiProvider.GEMINI -> geminiModels
+    // }
 
     // Reset model selection when API provider changes
     LaunchedEffect(currentApiProvider) {
         promptItemPosition.value = 0
-        if (currentModels.isNotEmpty()) {
-            ChatData.selected_model = currentModels[0].apiModel
+        if (freeModels.isNotEmpty()) {
+            ChatData.selected_model = freeModels[0].apiModel
         }
     }
 
     // Set initial model when models load (only once)
     var hasSetInitialModel by remember { mutableStateOf(false) }
-    LaunchedEffect(currentModels) {
+    LaunchedEffect(freeModels) {
         if (!hasSetInitialModel &&
-            currentModels.isNotEmpty() &&
-            promptItemPosition.value < currentModels.size
+            freeModels.isNotEmpty() &&
+            promptItemPosition.value < freeModels.size
         ) {
-            ChatData.selected_model = currentModels[promptItemPosition.value].apiModel
+            ChatData.selected_model = freeModels[promptItemPosition.value].apiModel
             hasSetInitialModel = true
         }
     }
@@ -569,10 +569,10 @@ fun ChatScreen(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Text(
-                                        text = if (currentModels.isNotEmpty() &&
-                                            promptItemPosition.value < currentModels.size
+                                        text = if (freeModels.isNotEmpty() &&
+                                            promptItemPosition.value < freeModels.size
                                         ) {
-                                            currentModels[promptItemPosition.value].displayName
+                                            freeModels[promptItemPosition.value].displayName
                                         } else {
                                             "Model Selector"
                                         },
@@ -725,7 +725,7 @@ fun ChatScreen(
 
                                         // List of models
                                         ModelMenuContent(
-                                            currentModels = currentModels,
+                                            currentModels = freeModels,
                                             currentApiProvider = currentApiProvider,
                                             promptItemPosition = promptItemPosition.value,
                                             appColors = appColors,
