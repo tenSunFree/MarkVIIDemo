@@ -68,7 +68,10 @@ object ChatData {
         return try {
             // First, ensure exception models are loaded from Firebase
             val exceptionModelsMap = FirebaseConfigManager.exceptionModels.value
-            Log.d("more", "ChatData, fetchFreeModels, exceptionModelsMap.size: ${exceptionModelsMap.size}");
+            Log.d(
+                "more",
+                "ChatData, fetchFreeModels, exceptionModelsMap.size: ${exceptionModelsMap.size}"
+            );
             Log.d("more", "ChatData, fetchFreeModels, exceptionModelsMap: ${exceptionModelsMap}");
 
             val allModels = fetchAvailableModels()
@@ -165,7 +168,8 @@ object ChatData {
         conversationHistory: List<Chat> = emptyList(),
         onChunk: (String) -> Unit
     ): Chat = withContext(Dispatchers.IO) {
-        // Log.d("more", "ChatData, getStreamingResponse, prompt: $prompt")
+        Log.d("more", "ChatData, getStreamingResponse, prompt: $prompt")
+        Log.d("more", "ChatData, getStreamingResponse, selected_model: $selected_model")
         // Log.d("more", "ChatData, getStreamingResponse, conversationHistory.size: ${conversationHistory.size}")
         // Log.d("more", "ChatData, getStreamingResponse, conversationHistory: $conversationHistory")
         try {
@@ -173,22 +177,39 @@ object ChatData {
             if (openrouter_api_key.isEmpty()) {
                 throw Exception("API_KEY_MISSING|API key is not configured")
             }
-            // Use a valid default model if none selected
-            val modelToUse = when {
-                selected_model.isNotEmpty() -> selected_model
-                else -> "anthropic/claude-3-5-sonnet-20241022"
+            // Randomize selected_model on every request if we have cached free models
+            if (cachedFreeModels.isNotEmpty()) {
+                val excluded = listOf("deepseek-r1t-chimera", "gemma-3n-e2b-it", "deepseek-r1t-chimera")
+                val picked = cachedFreeModels
+                    .filter { m -> excluded.none { kw -> m.apiModel.contains(kw, ignoreCase = true) } }
+                    .randomOrNull()
+                // If no other options remain after filtering, set selected_model to empty so the default model will be used
+                selected_model = picked?.apiModel.orEmpty()
+                Log.d("more", "ChatData, getStreamingResponse, pickedModel: ${picked?.displayName} / ${picked?.apiModel}")
             }
+            val modelToUse = selected_model.ifEmpty {
+                "anthropic/claude-3-5-sonnet-20241022"
+            }
+            Log.d("more", "ChatData, getStreamingResponse, modelToUse(random): $modelToUse")
             // Build messages array from conversation history
             val messages = mutableListOf<Message>()
             // Add conversation history (limit to last 6 messages for faster response)
+            // Skip known model-not-found error messages in history
             conversationHistory.takeLast(6).forEach { chat ->
+                val text = chat.prompt
+                // Skip known model-not-found error messages in history
+                if (text.contains("Error: MODEL_NOT_FOUND", ignoreCase = true)) {
+                    Log.d("more", "ChatData, getStreamingResponse, skip error history: $text")
+                    return@forEach
+                }
+                Log.d("more", "ChatData, getStreamingResponse, chat.prompt: $text")
                 messages.add(
                     Message(
                         role = if (chat.isFromUser) "user" else "assistant",
                         content = listOf(
                             Content(
                                 type = "text",
-                                text = chat.prompt
+                                text = text
                             )
                         )
                     )
@@ -287,6 +308,7 @@ object ChatData {
                             }
                         }
                         408 -> "REQUEST_TIMEOUT|Your request timed out. Try again"
+                        // Error occurred
                         429 -> "RATE_LIMITED|Too many requests. Please wait and retry"
                         502 -> "MODEL_DOWN|Model is currently unavailable or returned invalid response"
                         503 -> "NO_PROVIDER|No available model provider meets your requirements"

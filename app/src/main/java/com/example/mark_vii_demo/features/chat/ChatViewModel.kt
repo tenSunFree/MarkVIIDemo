@@ -60,7 +60,7 @@ class ChatViewModel : ViewModel() {
     }
 
     fun onEvent(event: ChatUiEvent) {
-
+        Log.d("more", "ChatViewModel, onEvent, event: $event")
         when (event) {
             is ChatUiEvent.SendPrompt -> {
                 if (event.prompt.isNotEmpty()) {
@@ -438,6 +438,12 @@ class ChatViewModel : ViewModel() {
                 }
                 handleError(e, prompt, null)
             }
+        }
+
+        // If the cause is CancellationException -> usually cancelled by the app or the coroutine scope
+        // If the cause is IOException / SocketException -> likely a network error or a remote/peer disconnect
+        streamingJob?.invokeOnCompletion { t ->
+            Log.d("more", "ChatViewModel, streamingJob completed, cause=${t?.javaClass?.simpleName}, msg=${t?.message}")
         }
     }
 
