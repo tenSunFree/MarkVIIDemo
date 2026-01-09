@@ -1,12 +1,15 @@
 package com.example.mark_vii_demo.features.chat
 
+import android.R.attr.languageTag
 import android.content.Intent
+import android.os.Build
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -106,6 +109,9 @@ import com.example.mark_vii_demo.features.chat.components.PromptSuggestionBubble
 import com.example.mark_vii_demo.features.chat.components.UserChatItem
 import com.example.mark_vii_demo.features.chat.components.getSelectedBitmap
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
+import com.example.mark_vii_demo.utils.getPreferredLocale
+import com.example.mark_vii_demo.utils.toRecognizerTag
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -502,11 +508,17 @@ fun ChatScreen(
                             shape = RoundedCornerShape(24.dp)
                         )
                 ) {
-                    Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         // Text input field at top (multiline, expands upward)
                         TextField(
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .weight(1f)
                                 .padding(0.dp)
                                 .heightIn(min = 40.dp, max = 150.dp),
                             value = chatState.prompt,
@@ -515,7 +527,7 @@ fun ChatScreen(
                             onValueChange = { chatViewModel.onEvent(ChatUiEvent.UpdatePrompt(it)) },
                             placeholder = {
                                 Text(
-                                    text = "Ask Mark VII...",
+                                    text = "Ask ChatGPT",
                                     fontSize = 14.sp,
                                     color = appColors.textSecondary
                                 )
@@ -540,6 +552,129 @@ fun ChatScreen(
                             )
                         )
 
+                        // Microphone icon
+                        IconButton(
+                            onClick = {
+                                try {
+                                    val locale = getPreferredLocale()
+                                    val languageTag = locale.toRecognizerTag()
+                                    val intent =
+                                        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                            putExtra(
+                                                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                            )
+                                            // Keep speech recognition aligned with the device/app language
+                                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, languageTag)
+                                            // These two extras may make some devices/engines more responsive, optional to keep
+                                            putExtra(
+                                                RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                                                languageTag
+                                            )
+                                            putExtra(
+                                                RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE,
+                                                languageTag
+                                            )
+                                            // putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
+
+                                            putExtra(
+                                                RecognizerIntent.EXTRA_PROMPT,
+                                                "Speak now..."
+                                            )
+                                        }
+                                    voiceInputLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context,
+                                        "Voice input not available",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Mic,
+                                contentDescription = "Voice input",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        // Send/Stop button
+                        val interactionSource = remember { MutableInteractionSource() }
+                        val isButtonEnabled =
+                            chatState.isGeneratingResponse || chatState.prompt.isNotEmpty() || bitmap != null
+                        val buttonScale by animateFloatAsState(
+                            targetValue = if (isButtonEnabled) 1f else 0.85f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            ),
+                            label = "button_scale"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .graphicsLayer {
+                                    scaleX = buttonScale
+                                    scaleY = buttonScale
+                                }
+                                .clip(CircleShape)
+                                .background(
+                                    if (chatState.isGeneratingResponse) {
+                                        appColors.error
+                                    } else if (chatState.prompt.isNotEmpty() || bitmap != null) {
+                                        appColors.accent
+                                    } else {
+                                        appColors.surfaceTertiary
+                                    }
+                                )
+                                .clickable(
+                                    enabled = isButtonEnabled,
+                                    interactionSource = interactionSource,
+                                    indication = null
+                                ) {
+                                    if (chatState.isGeneratingResponse) {
+                                        chatViewModel.onEvent(ChatUiEvent.StopStreaming)
+                                    } else {
+                                        chatViewModel.onEvent(
+                                            ChatUiEvent.SendPrompt(chatState.prompt, bitmap)
+                                        )
+                                        uriState.update { "" }
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AnimatedContent(
+                                targetState = chatState.isGeneratingResponse,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(200)) with fadeOut(
+                                        animationSpec = tween(200)
+                                    )
+                                },
+                                label = "icon_animation"
+                            ) { isGenerating ->
+                                Icon(
+                                    imageVector = if (isGenerating) {
+                                        Icons.Rounded.Stop
+                                    } else {
+                                        Icons.Rounded.ArrowUpward
+                                    },
+                                    contentDescription = if (isGenerating) "Stop" else "Send",
+                                    tint = if (isGenerating) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else if (chatState.prompt.isNotEmpty() || bitmap != null) {
+                                        Color(0xFF1C1C1E)
+                                    } else {
+                                        appColors.textSecondary
+                                    },
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        /*
                         // Bottom row: Icons + Model Selector + Mic + Send button
                         Row(
                             modifier = Modifier
@@ -549,6 +684,7 @@ fun ChatScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             // Model selector
+                            /*
                             Box(
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -777,8 +913,10 @@ fun ChatScreen(
                                     }
                                 }
                             }
+                            */
 
                             // Image picker icon - only visible when Gemini is selected
+                            /*
                             if (currentApiProvider == ApiProvider.GEMINI) {
                                 IconButton(
                                     onClick = {
@@ -798,117 +936,9 @@ fun ChatScreen(
                                     )
                                 }
                             }
-
-                            // Microphone icon
-                            IconButton(
-                                onClick = {
-                                    try {
-                                        val intent =
-                                            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                                putExtra(
-                                                    RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                                                )
-                                                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
-                                                putExtra(
-                                                    RecognizerIntent.EXTRA_PROMPT,
-                                                    "Speak now..."
-                                                )
-                                            }
-                                        voiceInputLauncher.launch(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(
-                                            context,
-                                            "Voice input not available",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Mic,
-                                    contentDescription = "Voice input",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-
-                            // Send/Stop button
-                            val interactionSource = remember { MutableInteractionSource() }
-                            val isButtonEnabled =
-                                chatState.isGeneratingResponse || chatState.prompt.isNotEmpty() || bitmap != null
-
-                            val buttonScale by animateFloatAsState(
-                                targetValue = if (isButtonEnabled) 1f else 0.85f,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                    stiffness = Spring.StiffnessMedium
-                                ),
-                                label = "button_scale"
-                            )
-
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .graphicsLayer {
-                                        scaleX = buttonScale
-                                        scaleY = buttonScale
-                                    }
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (chatState.isGeneratingResponse) {
-                                            appColors.error
-                                        } else if (chatState.prompt.isNotEmpty() || bitmap != null) {
-                                            appColors.accent
-                                        } else {
-                                            appColors.surfaceTertiary
-                                        }
-                                    )
-                                    .clickable(
-                                        enabled = isButtonEnabled,
-                                        interactionSource = interactionSource,
-                                        indication = null
-                                    ) {
-                                        if (chatState.isGeneratingResponse) {
-                                            chatViewModel.onEvent(ChatUiEvent.StopStreaming)
-                                        } else {
-                                            chatViewModel.onEvent(
-                                                ChatUiEvent.SendPrompt(chatState.prompt, bitmap)
-                                            )
-                                            uriState.update { "" }
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                AnimatedContent(
-                                    targetState = chatState.isGeneratingResponse,
-                                    transitionSpec = {
-                                        fadeIn(animationSpec = tween(200)) with fadeOut(
-                                            animationSpec = tween(200)
-                                        )
-                                    },
-                                    label = "icon_animation"
-                                ) { isGenerating ->
-                                    Icon(
-                                        imageVector = if (isGenerating) {
-                                            Icons.Rounded.Stop
-                                        } else {
-                                            Icons.Rounded.ArrowUpward
-                                        },
-                                        contentDescription = if (isGenerating) "Stop" else "Send",
-                                        tint = if (isGenerating) {
-                                            MaterialTheme.colorScheme.onPrimary
-                                        } else if (chatState.prompt.isNotEmpty() || bitmap != null) {
-                                            Color(0xFF1C1C1E)
-                                        } else {
-                                            appColors.textSecondary
-                                        },
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
+                            */
                         }
+                        */
                     }
                 }
             }

@@ -65,11 +65,9 @@ class ChatViewModel : ViewModel() {
             is ChatUiEvent.SendPrompt -> {
                 if (event.prompt.isNotEmpty()) {
                     addPrompt(event.prompt, event.bitmap)
-
                     if (event.bitmap != null) {
                         getResponseWithImage(event.prompt, event.bitmap)
                     } else {
-
                         getResponse(event.prompt)
                     }
                 }
@@ -443,7 +441,10 @@ class ChatViewModel : ViewModel() {
         // If the cause is CancellationException -> usually cancelled by the app or the coroutine scope
         // If the cause is IOException / SocketException -> likely a network error or a remote/peer disconnect
         streamingJob?.invokeOnCompletion { t ->
-            Log.d("more", "ChatViewModel, streamingJob completed, cause=${t?.javaClass?.simpleName}, msg=${t?.message}")
+            Log.d(
+                "more",
+                "ChatViewModel, streamingJob completed, cause=${t?.javaClass?.simpleName}, msg=${t?.message}"
+            )
         }
     }
 

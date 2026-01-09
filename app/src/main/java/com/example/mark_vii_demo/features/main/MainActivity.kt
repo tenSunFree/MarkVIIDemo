@@ -254,8 +254,7 @@ class MainActivity : AppCompatActivity() {
                                                 actionText = "登入",
                                             )
                                         },
-
-//                                    Show welcome guide once when app opens (no API call)
+                                        // Show welcome guide once when app opens (no API call)
                                         bottomBar = {
                                             if (opentimes == 1) {
                                                 chaViewModel.showWelcomeGuide()
@@ -354,40 +353,40 @@ class MainActivity : AppCompatActivity() {
         )
 
         languageIdentifier.identifyLanguage(text).addOnSuccessListener { languageCode ->
-                if (languageCode != "und") {
-                    // Map MLKit language codes to Locale
-                    val locale = when (languageCode) {
-                        "zh" -> Locale.SIMPLIFIED_CHINESE
-                        "zh-Hant" -> Locale.TRADITIONAL_CHINESE
-                        "ja" -> Locale.JAPANESE
-                        "ko" -> Locale.KOREAN
-                        "es" -> Locale("es")
-                        "fr" -> Locale.FRENCH
-                        "de" -> Locale.GERMAN
-                        "it" -> Locale.ITALIAN
-                        "pt" -> Locale("pt")
-                        "ru" -> Locale("ru")
-                        "ar" -> Locale("ar")
-                        "hi" -> Locale("hi")
-                        "en" -> Locale.US
-                        else -> Locale.US
-                    }
-
-                    // Set language if available
-                    val result = textToSpeech?.setLanguage(locale)
-                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        // Fallback to English if language not supported
-                        textToSpeech?.setLanguage(Locale.US)
-                    }
+            if (languageCode != "und") {
+                // Map MLKit language codes to Locale
+                val locale = when (languageCode) {
+                    "zh" -> Locale.SIMPLIFIED_CHINESE
+                    "zh-Hant" -> Locale.TRADITIONAL_CHINESE
+                    "ja" -> Locale.JAPANESE
+                    "ko" -> Locale.KOREAN
+                    "es" -> Locale("es")
+                    "fr" -> Locale.FRENCH
+                    "de" -> Locale.GERMAN
+                    "it" -> Locale.ITALIAN
+                    "pt" -> Locale("pt")
+                    "ru" -> Locale("ru")
+                    "ar" -> Locale("ar")
+                    "hi" -> Locale("hi")
+                    "en" -> Locale.US
+                    else -> Locale.US
                 }
 
-                // Speak the text after setting language
-                speakTextWithLanguage(text)
-            }.addOnFailureListener {
-                // If detection fails, use English as fallback
-                textToSpeech?.setLanguage(Locale.US)
-                speakTextWithLanguage(text)
+                // Set language if available
+                val result = textToSpeech?.setLanguage(locale)
+                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                    // Fallback to English if language not supported
+                    textToSpeech?.setLanguage(Locale.US)
+                }
             }
+
+            // Speak the text after setting language
+            speakTextWithLanguage(text)
+        }.addOnFailureListener {
+            // If detection fails, use English as fallback
+            textToSpeech?.setLanguage(Locale.US)
+            speakTextWithLanguage(text)
+        }
     }
 
     private fun speakTextWithLanguage(text: String) {

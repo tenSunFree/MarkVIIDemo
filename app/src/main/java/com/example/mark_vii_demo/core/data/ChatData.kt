@@ -179,7 +179,8 @@ object ChatData {
             }
             // Randomize selected_model on every request if we have cached free models
             if (cachedFreeModels.isNotEmpty()) {
-                val excluded = listOf("deepseek-r1t-chimera", "gemma-3n-e2b-it", "deepseek-r1t-chimera")
+                // val excluded = listOf("deepseek", "gemma", "gemini")
+                val excluded = listOf("deepseek-r1t-chimera", "gemma-3n-e2b-it", "deepseek-r1t-chimera", "gemini-2.0-flash-exp", "gemma-3-4b-it")
                 val picked = cachedFreeModels
                     .filter { m -> excluded.none { kw -> m.apiModel.contains(kw, ignoreCase = true) } }
                     .randomOrNull()
