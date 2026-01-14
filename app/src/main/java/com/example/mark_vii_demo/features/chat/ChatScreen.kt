@@ -496,11 +496,12 @@ fun ChatScreen(
                         )
                         .clip(RoundedCornerShape(24.dp))
                         .background(
-                            if (appColors.textPrimary.luminance() > 0.5f) {
-                                appColors.surfaceTertiary
-                            } else {
-                                MaterialTheme.colorScheme.surface
-                            }
+                            Color(0xFF212121)
+                            // if (appColors.textPrimary.luminance() > 0.5f) {
+                            //     appColors.surfaceTertiary
+                            // } else {
+                            //     MaterialTheme.colorScheme.surface
+                            // }
                         )
                         .border(
                             width = 1.5.dp,
@@ -540,9 +541,12 @@ fun ChatScreen(
                             colors = TextFieldDefaults.colors(
                                 focusedTextColor = MaterialTheme.colorScheme.onSurface,
                                 unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                disabledContainerColor = Color.Transparent,
+                                focusedContainerColor = Color(0xFF212121),
+                                unfocusedContainerColor = Color(0xFF212121),
+                                disabledContainerColor = Color(0xFF212121),
+                                // focusedContainerColor = Color.Transparent,
+                                // unfocusedContainerColor = Color.Transparent,
+                                // disabledContainerColor = Color.Transparent,
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent,
                                 disabledIndicatorColor = Color.Transparent,
@@ -594,9 +598,11 @@ fun ChatScreen(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Mic,
+                                // imageVector = Icons.Rounded.Mic,
+                                painter = painterResource(id = R.drawable.chat_microphone),
                                 contentDescription = "Voice input",
-                                tint = MaterialTheme.colorScheme.onSurface,
+                                // tint = MaterialTheme.colorScheme.onSurface,
+                                tint = Color.Unspecified,   // Disable default tint for Icon
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -655,22 +661,48 @@ fun ChatScreen(
                                 },
                                 label = "icon_animation"
                             ) { isGenerating ->
-                                Icon(
-                                    imageVector = if (isGenerating) {
-                                        Icons.Rounded.Stop
-                                    } else {
-                                        Icons.Rounded.ArrowUpward
-                                    },
-                                    contentDescription = if (isGenerating) "Stop" else "Send",
-                                    tint = if (isGenerating) {
-                                        MaterialTheme.colorScheme.onPrimary
-                                    } else if (chatState.prompt.isNotEmpty() || bitmap != null) {
-                                        Color(0xFF1C1C1E)
-                                    } else {
-                                        appColors.textSecondary
-                                    },
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                val buttonColor = if (isGenerating) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else if (chatState.prompt.isNotEmpty() || bitmap != null) {
+                                    Color.White
+                                } else {
+                                    Color(0xFF383838)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(buttonColor),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.chat_up_arrow),
+                                        contentDescription = if (isGenerating) "Stop" else "Send",
+                                        tint = Color.Unspecified,   // Disable default tint for Icon
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                // Icon(
+                                //     // imageVector = if (isGenerating) {
+                                //     //     Icons.Rounded.Stop
+                                //     // } else {
+                                //     //     Icons.Rounded.ArrowUpward
+                                //     // },
+                                //     painter = painterResource(id = R.drawable.chat_up_arrow),
+                                //     contentDescription = if (isGenerating) "Stop" else "Send",
+                                //     tint = if (isGenerating) {
+                                //         MaterialTheme.colorScheme.onPrimary
+                                //     } else if (chatState.prompt.isNotEmpty() || bitmap != null) {
+                                //         // Color(0xFF1C1C1E)
+                                //         // Color(0xFF383838)
+                                //         Color.Blue
+                                //     } else {
+                                //         // appColors.textSecondary
+                                //         // Color(0xFF383838)
+                                //         Color.Red
+                                //     },
+                                //     modifier = Modifier.size(18.dp)
+                                // )
                             }
                         }
 
