@@ -18,9 +18,7 @@ This project is for learning and technical practice.
 
 Planned / In progress:  
 規劃中 / 開發中：
-
-- Modular architecture exploration  
-  模組化架構探索  
+ 
 - AI-related integration experiments  
   AI相關整合嘗試
 
