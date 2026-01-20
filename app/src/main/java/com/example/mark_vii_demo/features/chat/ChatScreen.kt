@@ -483,13 +483,31 @@ fun ChatScreen(
             }
 
             // ================ Enhanced Visible Input Box ================
-            // Bottom input bar component
-            Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Add icon
+                IconButton(
+                    onClick = {},
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.chat_add),
+                        contentDescription = "Add",
+                        tint = Color.Unspecified,   // Disable default tint for Icon
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                // Bottom input bar component
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .shadow(
-                            elevation = 16.dp,
+                            elevation = 0.dp,
                             shape = RoundedCornerShape(24.dp),
                             ambientColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
                             spotColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
