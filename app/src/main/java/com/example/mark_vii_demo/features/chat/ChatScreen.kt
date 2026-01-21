@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Build
 import android.speech.RecognizerIntent
 import android.speech.tts.TextToSpeech
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
@@ -290,10 +291,19 @@ fun ChatScreen(
         }
     }
 
+    // LaunchedEffect(chatState.chatList) {
+    //     val ids = chatState.chatList.take(5).joinToString { it.prompt }
+    //     Log.d("chat", "top5: $ids")
+    // }
+
     // Auto-scroll to bottom when new message appears or when generating
     LaunchedEffect(chatState.chatList.size, chatState.isGeneratingResponse) {
-        if (chatState.chatList.isNotEmpty()) {
-            listState.animateScrollToItem(0)
+        // if (chatState.chatList.isNotEmpty()) {
+        //     listState.animateScrollToItem(0)
+        // }
+        val lastIndex = chatState.chatList.lastIndex
+        if (lastIndex >= 0) {
+            listState.animateScrollToItem(lastIndex)
         }
     }
 
@@ -329,7 +339,7 @@ fun ChatScreen(
                     .fillMaxSize()
                     .padding(horizontal = 8.dp),
                 state = listState,
-                reverseLayout = true,
+                // reverseLayout = true,
                 contentPadding = PaddingValues(bottom = 140.dp)
             ) {
                 itemsIndexed(
@@ -355,8 +365,11 @@ fun ChatScreen(
                         } else {
                             // Get the nearest previous user message for retry (skip error/model entries)
                             val previousUserChat = chatState.chatList
-                                .drop(index + 1)
-                                .firstOrNull { it.isFromUser }
+                                .take(index)
+                                .lastOrNull { it.isFromUser }
+                            // val previousUserChat = chatState.chatList
+                            //     .drop(index)
+                            //     .firstOrNull { it.isFromUser }
 
                             ModelChatItem(
                                 response = chat.prompt,

@@ -103,8 +103,12 @@ class ChatViewModel : ViewModel() {
                 // Mark current streaming chat as complete
                 _chatState.update {
                     val updatedList = it.chatList.toMutableList()
-                    if (updatedList.isNotEmpty() && updatedList[0].isStreaming) {
-                        updatedList[0] = updatedList[0].copy(isStreaming = false)
+                    // if (updatedList.isNotEmpty() && updatedList[0].isStreaming) {
+                    //     updatedList[0] = updatedList[0].copy(isStreaming = false)
+                    // }
+                    val last = updatedList.lastIndex
+                    if (last >= 0 && updatedList[last].isStreaming) {
+                        updatedList[last] = updatedList[last].copy(isStreaming = false)
                     }
                     it.copy(
                         chatList = updatedList,
@@ -252,7 +256,7 @@ class ChatViewModel : ViewModel() {
         _chatState.update {
             it.copy(
                 chatList = it.chatList.toMutableList().apply {
-                    add(0, Chat(prompt, bitmap, true))
+                    add(Chat(prompt, bitmap, true))
                 },
                 prompt = "",
                 bitmap = null,
@@ -272,85 +276,85 @@ class ChatViewModel : ViewModel() {
                 when (currentProvider) {
                     ApiProvider.GEMINI -> {
                         // Use Gemini API with streaming
-                        val streamingChat = Chat(
-                            prompt = "",
-                            bitmap = null,
-                            isFromUser = false,
-                            modelUsed = ChatData.selected_model,
-                            isStreaming = true
-                        )
-
-                        _chatState.update {
-                            it.copy(
-                                chatList = it.chatList.toMutableList().apply {
-                                    add(0, streamingChat)
-                                }
-                            )
-                        }
-
-                        // Get conversation history (exclude the current prompt and streaming placeholder)
-                        val historySource = _chatState.value.chatList.drop(1)
-
-                        // If retrying, exclude the most recent assistant message from context
-                        // This prevents the model from seeing its previous (failed/rejected) response
-                        val historyFiltered =
-                            if (isRetry && historySource.isNotEmpty() && !historySource[0].isFromUser) {
-                                historySource.drop(1)
-                            } else {
-                                historySource
-                            }
-
-                        val conversationHistory = historyFiltered
-                            .filter { !it.isStreaming } // Skip any other streaming messages
-                            .reversed() // Reverse to chronological order
-
-                        GeminiClient.generateContentStream(
-                            prompt = prompt,
-                            modelName = ChatData.selected_model,
-                            conversationHistory = conversationHistory,
-                            onChunk = { chunk ->
-                                _chatState.update { state ->
-                                    val updatedList = state.chatList.toMutableList()
-                                    if (updatedList.isNotEmpty()) {
-                                        val currentResponse = updatedList[0]
-                                        updatedList[0] = currentResponse.copy(
-                                            prompt = currentResponse.prompt + chunk,
-                                            isStreaming = true
-                                        )
-                                    }
-                                    state.copy(
-                                        chatList = updatedList,
-                                        hapticTrigger = System.currentTimeMillis() // Trigger haptic on chunk
-                                    )
-                                }
-                            },
-                            onFinish = { finishReason ->
-                                // Mark streaming as complete
-                                _chatState.update { state ->
-                                    val updatedList = state.chatList.toMutableList()
-                                    if (updatedList.isNotEmpty()) {
-                                        val currentResponse = updatedList[0]
-
-                                        // Check if response was truncated due to max tokens
-                                        val finalPrompt = if (finishReason == "MAX_TOKENS") {
-                                            currentResponse.prompt + "\n\n⚠️ Response truncated: Maximum token limit reached. Try asking for a shorter response or continue the conversation."
-                                        } else {
-                                            currentResponse.prompt
-                                        }
-
-                                        updatedList[0] = currentResponse.copy(
-                                            prompt = finalPrompt,
-                                            isStreaming = false
-                                        )
-                                    }
-                                    state.copy(
-                                        chatList = updatedList,
-                                        isGeneratingResponse = false
-                                    )
-                                }
-                                saveChatHistory()
-                            }
-                        )
+                        // val streamingChat = Chat(
+                        //     prompt = "",
+                        //     bitmap = null,
+                        //     isFromUser = false,
+                        //     modelUsed = ChatData.selected_model,
+                        //     isStreaming = true
+                        // )
+//
+                        // _chatState.update {
+                        //     it.copy(
+                        //         chatList = it.chatList.toMutableList().apply {
+                        //             add(streamingChat)
+                        //         }
+                        //     )
+                        // }
+//
+                        // // Get conversation history (exclude the current prompt and streaming placeholder)
+                        // val historySource = _chatState.value.chatList.drop(1)
+//
+                        // // If retrying, exclude the most recent assistant message from context
+                        // // This prevents the model from seeing its previous (failed/rejected) response
+                        // val historyFiltered =
+                        //     if (isRetry && historySource.isNotEmpty() && !historySource[0].isFromUser) {
+                        //         historySource.drop(1)
+                        //     } else {
+                        //         historySource
+                        //     }
+//
+                        // val conversationHistory = historyFiltered
+                        //     .filter { !it.isStreaming } // Skip any other streaming messages
+                        //     .reversed() // Reverse to chronological order
+//
+                        // GeminiClient.generateContentStream(
+                        //     prompt = prompt,
+                        //     modelName = ChatData.selected_model,
+                        //     conversationHistory = conversationHistory,
+                        //     onChunk = { chunk ->
+                        //         _chatState.update { state ->
+                        //             val updatedList = state.chatList.toMutableList()
+                        //             if (updatedList.isNotEmpty()) {
+                        //                 val currentResponse = updatedList[0]
+                        //                 updatedList[0] = currentResponse.copy(
+                        //                     prompt = currentResponse.prompt + chunk,
+                        //                     isStreaming = true
+                        //                 )
+                        //             }
+                        //             state.copy(
+                        //                 chatList = updatedList,
+                        //                 hapticTrigger = System.currentTimeMillis() // Trigger haptic on chunk
+                        //             )
+                        //         }
+                        //     },
+                        //     onFinish = { finishReason ->
+                        //         // Mark streaming as complete
+                        //         _chatState.update { state ->
+                        //             val updatedList = state.chatList.toMutableList()
+                        //             if (updatedList.isNotEmpty()) {
+                        //                 val currentResponse = updatedList[0]
+//
+                        //                 // Check if response was truncated due to max tokens
+                        //                 val finalPrompt = if (finishReason == "MAX_TOKENS") {
+                        //                     currentResponse.prompt + "\n\n⚠️ Response truncated: Maximum token limit reached. Try asking for a shorter response or continue the conversation."
+                        //                 } else {
+                        //                     currentResponse.prompt
+                        //                 }
+//
+                        //                 updatedList[0] = currentResponse.copy(
+                        //                     prompt = finalPrompt,
+                        //                     isStreaming = false
+                        //                 )
+                        //             }
+                        //             state.copy(
+                        //                 chatList = updatedList,
+                        //                 isGeneratingResponse = false
+                        //             )
+                        //         }
+                        //         saveChatHistory()
+                        //     }
+                        // )
                     }
 
                     ApiProvider.OPENROUTER -> {
@@ -366,25 +370,40 @@ class ChatViewModel : ViewModel() {
                         _chatState.update {
                             it.copy(
                                 chatList = it.chatList.toMutableList().apply {
-                                    add(0, streamingChat)
+                                    add(streamingChat)
                                 }
                             )
                         }
 
-                        // Get conversation history (exclude the current prompt and streaming placeholder)
-                        val historySource = _chatState.value.chatList.drop(1)
-
-                        // If retrying, exclude the most recent assistant message from context
-                        val historyFiltered =
-                            if (isRetry && historySource.isNotEmpty() && !historySource[0].isFromUser) {
-                                historySource.drop(1)
-                            } else {
-                                historySource
-                            }
-
+                        val list = _chatState.value.chatList
+                        // Remove trailing streaming placeholder (if present)
+                        val historySource = if (list.isNotEmpty() && list.last().isStreaming) {
+                            list.dropLast(1)
+                        } else {
+                            list
+                        }
+                        // On retry, exclude the last assistant message to avoid putting the just-failed response back into the context
+                        val historyFiltered = if (isRetry) {
+                            historySource.dropLastWhile { !it.isFromUser }  // 連續的 assistant/error 都丟掉直到遇到 user
+                        } else {
+                            historySource
+                        }
+                        // The list is already ordered old->new, no need to reverse
                         val conversationHistory = historyFiltered
-                            .filter { !it.isStreaming } // Skip any other streaming messages
-                            .reversed() // Reverse to chronological order
+                            .filter { !it.isStreaming }
+
+                        // Get conversation history (exclude the current prompt and streaming placeholder)
+                        // val historySource = _chatState.value.chatList.drop(1)
+                        // If retrying, exclude the most recent assistant message from context
+                        // val historyFiltered =
+                        //     if (isRetry && historySource.isNotEmpty() && !historySource[0].isFromUser) {
+                        //         historySource.drop(1)
+                        //     } else {
+                        //         historySource
+                        //     }
+                        // val conversationHistory = historyFiltered
+                        //     .filter { !it.isStreaming } // Skip any other streaming messages
+                        //     .reversed() // Reverse to chronological order
 
                         var chunkCount = 0
                         val chat = ChatData.getStreamingResponse(
@@ -395,13 +414,21 @@ class ChatViewModel : ViewModel() {
                             // chunkCount++
                             _chatState.update { state ->
                                 val updatedList = state.chatList.toMutableList()
-                                if (updatedList.isNotEmpty()) {
-                                    val currentResponse = updatedList[0]
-                                    updatedList[0] = currentResponse.copy(
+                                val last = updatedList.lastIndex
+                                if (last >= 0) {
+                                    val currentResponse = updatedList[last]
+                                    updatedList[last] = currentResponse.copy(
                                         prompt = currentResponse.prompt + chunk,
                                         isStreaming = true
                                     )
                                 }
+                                // if (updatedList.isNotEmpty()) {
+                                //     val currentResponse = updatedList[0]
+                                //     updatedList[0] = currentResponse.copy(
+                                //         prompt = currentResponse.prompt + chunk,
+                                //         isStreaming = true
+                                //     )
+                                // }
                                 state.copy(
                                     chatList = updatedList
                                     // Haptics will be handled by typewriter animation in UI
@@ -411,9 +438,13 @@ class ChatViewModel : ViewModel() {
 
                         _chatState.update { state ->
                             val updatedList = state.chatList.toMutableList()
-                            if (updatedList.isNotEmpty()) {
-                                updatedList[0] = chat.copy(isStreaming = false)
+                            val last = updatedList.lastIndex
+                            if (last >= 0) {
+                                updatedList[last] = chat.copy(isStreaming = false)
                             }
+                            // if (updatedList.isNotEmpty()) {
+                            //     updatedList[0] = chat.copy(isStreaming = false)
+                            // }
                             state.copy(
                                 chatList = updatedList,
                                 isGeneratingResponse = false
@@ -427,9 +458,13 @@ class ChatViewModel : ViewModel() {
                 _chatState.update { state ->
                     state.copy(
                         chatList = state.chatList.toMutableList().apply {
-                            if (isNotEmpty() && !get(0).isFromUser) {
-                                removeAt(0)
+                            val last = lastIndex
+                            if (last >= 0 && !get(last).isFromUser && get(last).isStreaming) {
+                                removeAt(last)
                             }
+                            // if (isNotEmpty() && !get(0).isFromUser) {
+                            //     removeAt(0)
+                            // }
                         },
                         isGeneratingResponse = false
                     )
@@ -463,7 +498,7 @@ class ChatViewModel : ViewModel() {
                 _chatState.update {
                     it.copy(
                         chatList = it.chatList.toMutableList().apply {
-                            add(0, streamingChat)
+                            add(streamingChat)
                         }
                     )
                 }
@@ -490,9 +525,13 @@ class ChatViewModel : ViewModel() {
                 // Replace streaming placeholder with actual response
                 _chatState.update { state ->
                     val updatedList = state.chatList.toMutableList()
-                    if (updatedList.isNotEmpty() && updatedList[0].isStreaming) {
-                        updatedList[0] = chat.copy(isStreaming = false)
+                    val last = updatedList.lastIndex
+                    if (last >= 0 && updatedList[last].isStreaming) {
+                        updatedList[last] = chat.copy(isStreaming = false)
                     }
+                    // if (updatedList.isNotEmpty() && updatedList[0].isStreaming) {
+                    //     updatedList[0] = chat.copy(isStreaming = false)
+                    // }
                     state.copy(
                         chatList = updatedList,
                         isGeneratingResponse = false
@@ -533,7 +572,7 @@ class ChatViewModel : ViewModel() {
         _chatState.update {
             it.copy(
                 chatList = it.chatList.toMutableList().apply {
-                    add(0, errorChat)
+                    add(errorChat)
                 },
                 isGeneratingResponse = false
             )

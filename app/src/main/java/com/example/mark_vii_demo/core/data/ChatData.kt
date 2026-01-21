@@ -216,23 +216,27 @@ object ChatData {
                     )
                 )
             }
-            // Redundant duplicate
             // Add current prompt as the latest user message
-            // messages.add(
-            //     Message(
-            //         role = "user",
-            //         content = listOf(
-            //             Content(
-            //                 type = "text",
-            //                 text = prompt
-            //             )
-            //         )
-            //     )
-            // )
+            messages.add(
+                Message(
+                    role = "user",
+                    content = listOf(
+                        Content(
+                            type = "text",
+                            text = prompt
+                        )
+                    )
+                )
+            )
+            // If the prompt is an empty string, throw an error immediately (to avoid wasting a request)
+            if (prompt.isBlank()) {
+                throw Exception("BAD_REQUEST|Prompt is empty")
+            }
             val request = OpenRouterRequest(
                 model = modelToUse,
                 messages = messages,
                 max_tokens = 3000,
+                // max_tokens = 1536,
                 temperature = 0.7,
                 stream = true
             )
