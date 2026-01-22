@@ -6,8 +6,10 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.io.ByteArrayOutputStream
@@ -202,6 +204,21 @@ object ChatData {
         return models
     }
 
+    private suspend fun ensureFreeModelsLoadedIfNeeded(cacheKey: String? = null) {
+        if (cachedFreeModels.isNotEmpty()) return
+
+        try {
+            withTimeout(8_000) { // 8 秒自己調
+                getOrFetchFreeModels(cacheKey)
+            }
+            Log.d("more", "ChatData, ensureFreeModelsLoadedIfNeeded ok, size=${cachedFreeModels.size}")
+        } catch (e: TimeoutCancellationException) {
+            Log.w("more", "ChatData, ensureFreeModelsLoadedIfNeeded timeout")
+        } catch (e: Exception) {
+            Log.w("more", "ChatData, ensureFreeModelsLoadedIfNeeded failed: ${e.message}")
+        }
+    }
+
     /**
      * Get streaming response from AI model with conversation history
      * Yields partial responses as they are generated
@@ -220,10 +237,12 @@ object ChatData {
             if (openrouter_api_key.isEmpty()) {
                 throw Exception("API_KEY_MISSING|API key is not configured")
             }
+            // Ensure cached free models are loaded (use exceptionModels hash as cacheKey so updates invalidate the cache)
+            ensureFreeModelsLoadedIfNeeded(cacheKey = FirebaseConfigManager.exceptionModels.value.hashCode().toString())
             // Randomize selected_model on every request if we have cached free models
             if (cachedFreeModels.isNotEmpty()) {
                 // val excluded = listOf("deepseek", "gemma", "gemini")
-                val excluded = listOf("deepseek-r1t-chimera", "gemma-3n-e2b-it", "deepseek-r1t-chimera", "gemini-2.0-flash-exp", "gemma-3-4b-it")
+                val excluded = listOf("deepseek-r1t-chimera", "gemma-3n-e2b-it", "deepseek-r1t-chimera", "gemini-2.0-flash-exp", "gemma-3-4b-it", "gemma-3-27b-it")
                 val picked = cachedFreeModels
                     .filter { m -> excluded.none { kw -> m.apiModel.contains(kw, ignoreCase = true) } }
                     .randomOrNull()
