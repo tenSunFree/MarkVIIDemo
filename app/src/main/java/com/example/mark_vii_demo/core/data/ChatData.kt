@@ -6,7 +6,9 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import okhttp3.ResponseBody
 import retrofit2.HttpException
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -34,6 +36,8 @@ object ChatData {
     var cachedFreeModels: List<ModelInfo> = emptyList()
     var cachedFreeModelsKey: String = ""
 
+    private fun ResponseBody?.safeString(): String? = try { this?.string() } catch (_: Exception) { null }
+
     /**
      * Update API key from Firebase
      * This is the ONLY way to set the API key
@@ -45,19 +49,58 @@ object ChatData {
         }
     }
 
+    private fun isOpenRouterTimeout(e: Throwable, body: String?): Boolean {
+        // HTTP 408
+        if (e is HttpException && e.code() == 408) return true
+        // Response body contains common OpenRouter/Cloudflare timeout phrases
+        val msg = (body ?: e.message).orEmpty()
+        return msg.contains("Operation timed out", ignoreCase = true) ||
+                msg.contains("timed out", ignoreCase = true)
+    }
+
     /**
      * Fetch all available models from OpenRouter
      * Returns list of models with pricing info
      */
     suspend fun fetchAvailableModels(): List<ModelData> {
-        return try {
-            val response = withContext(Dispatchers.IO) {
-                OpenRouterClient.api.getModels()
+        return withContext(Dispatchers.IO) {
+            var lastError: Throwable? = null
+            var lastBody: String? = null
+            repeat(2) { attempt -> // Up to 2 attempts: initial try + one retry
+                try {
+                    val response = OpenRouterClient.api.getModels()
+                    return@withContext response.data ?: emptyList()
+                } catch (e: Exception) {
+                    lastError = e
+                    lastBody = if (e is HttpException) e.response()?.errorBody().safeString() else null
+                    val shouldRetry = isOpenRouterTimeout(e, lastBody) && attempt == 0
+                    Log.w(
+                        "more",
+                        "ChatData, fetchAvailableModels failed attempt=${attempt + 1}, " +
+                                "shouldRetry=$shouldRetry, err=${e.javaClass.simpleName}, " +
+                                "code=${(e as? HttpException)?.code()}, body=$lastBody"
+                    )
+                    if (shouldRetry) {
+                        // Small delay to avoid immediately hitting the same congestion
+                        delay(500)
+                        return@repeat
+                    } else {
+                        return@withContext emptyList()
+                    }
+                }
             }
-            response.data ?: emptyList()
-        } catch (e: Exception) {
+            // Shouldn't reach here in theory, but keep as a safeguard
+            Log.e("more", "ChatData, fetchAvailableModels retry exhausted: ${lastError?.message}, body=$lastBody")
             emptyList()
         }
+        // return try {
+        //     val response = withContext(Dispatchers.IO) {
+        //         OpenRouterClient.api.getModels()
+        //     }
+        //     response.data ?: emptyList()
+        // } catch (e: Exception) {
+        //     emptyList()
+        // }
     }
 
     /**
@@ -144,10 +187,10 @@ object ChatData {
         Log.d("more", "ChatData, getOrFetchFreeModels, cacheKey: $cacheKey");
         Log.d("more", "ChatData, getOrFetchFreeModels, cachedFreeModels: $cachedFreeModels");
         Log.d("more", "ChatData, getOrFetchFreeModels, cachedFreeModelsKey: $cachedFreeModelsKey");
-        if (cachedFreeModels.isNotEmpty() && cacheKey != null && cacheKey == cachedFreeModelsKey) {
+        // Use cached data if available (also when cacheKey is null)
+        if (cachedFreeModels.isNotEmpty() && (cacheKey == null || cacheKey == cachedFreeModelsKey)) {
             return cachedFreeModels
         }
-
         val models = fetchFreeModels()
         Log.d("more", "ChatData, getOrFetchFreeModels, models: ${models.size}");
         models.forEach {
