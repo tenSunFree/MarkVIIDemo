@@ -38,7 +38,11 @@ object ChatData {
     var cachedFreeModels: List<ModelInfo> = emptyList()
     var cachedFreeModelsKey: String = ""
 
-    private fun ResponseBody?.safeString(): String? = try { this?.string() } catch (_: Exception) { null }
+    private fun ResponseBody?.safeString(): String? = try {
+        this?.string()
+    } catch (_: Exception) {
+        null
+    }
 
     /**
      * Update API key from Firebase
@@ -74,7 +78,8 @@ object ChatData {
                     return@withContext response.data ?: emptyList()
                 } catch (e: Exception) {
                     lastError = e
-                    lastBody = if (e is HttpException) e.response()?.errorBody().safeString() else null
+                    lastBody =
+                        if (e is HttpException) e.response()?.errorBody().safeString() else null
                     val shouldRetry = isOpenRouterTimeout(e, lastBody) && attempt == 0
                     Log.w(
                         "more",
@@ -92,7 +97,10 @@ object ChatData {
                 }
             }
             // Shouldn't reach here in theory, but keep as a safeguard
-            Log.e("more", "ChatData, fetchAvailableModels retry exhausted: ${lastError?.message}, body=$lastBody")
+            Log.e(
+                "more",
+                "ChatData, fetchAvailableModels retry exhausted: ${lastError?.message}, body=$lastBody"
+            )
             emptyList()
         }
         // return try {
@@ -206,12 +214,14 @@ object ChatData {
 
     private suspend fun ensureFreeModelsLoadedIfNeeded(cacheKey: String? = null) {
         if (cachedFreeModels.isNotEmpty()) return
-
         try {
-            withTimeout(8_000) { // 8 秒自己調
+            withTimeout(8_000) { // 8 seconds, adjust as needed
                 getOrFetchFreeModels(cacheKey)
             }
-            Log.d("more", "ChatData, ensureFreeModelsLoadedIfNeeded ok, size=${cachedFreeModels.size}")
+            Log.d(
+                "more",
+                "ChatData, ensureFreeModelsLoadedIfNeeded ok, size=${cachedFreeModels.size}"
+            )
         } catch (e: TimeoutCancellationException) {
             Log.w("more", "ChatData, ensureFreeModelsLoadedIfNeeded timeout")
         } catch (e: Exception) {
@@ -220,37 +230,73 @@ object ChatData {
     }
 
     /**
+     * Remove :free postfix from model ID
+     */
+    private fun String.normalizeModelId(): String =
+        this.replace(":free", "", ignoreCase = true).trim()
+
+    /**
      * Get streaming response from AI model with conversation history
      * Yields partial responses as they are generated
      */
     suspend fun getStreamingResponse(
         prompt: String,
         conversationHistory: List<Chat> = emptyList(),
-        onChunk: (String) -> Unit
+        retry404: Boolean = false,        // Only allow one retry
+        excludeModelId: String? = null,   // Exclude the model that just returned 404 when retrying
+        onChunk: (String) -> Unit,
     ): Chat = withContext(Dispatchers.IO) {
         Log.d("more", "ChatData, getStreamingResponse, prompt: $prompt")
         Log.d("more", "ChatData, getStreamingResponse, selected_model: $selected_model")
         // Log.d("more", "ChatData, getStreamingResponse, conversationHistory.size: ${conversationHistory.size}")
         // Log.d("more", "ChatData, getStreamingResponse, conversationHistory: $conversationHistory")
+        var modelToUse = ""
         try {
             // Check if API key is loaded
             if (openrouter_api_key.isEmpty()) {
                 throw Exception("API_KEY_MISSING|API key is not configured")
             }
             // Ensure cached free models are loaded (use exceptionModels hash as cacheKey so updates invalidate the cache)
-            ensureFreeModelsLoadedIfNeeded(cacheKey = FirebaseConfigManager.exceptionModels.value.hashCode().toString())
+            ensureFreeModelsLoadedIfNeeded(
+                cacheKey = FirebaseConfigManager.exceptionModels.value.hashCode().toString()
+            )
             // Randomize selected_model on every request if we have cached free models
             if (cachedFreeModels.isNotEmpty()) {
                 // val excluded = listOf("deepseek", "gemma", "gemini")
-                val excluded = listOf("deepseek-r1t-chimera", "gemma-3n-e2b-it", "deepseek-r1t-chimera", "gemini-2.0-flash-exp", "gemma-3-4b-it", "gemma-3-27b-it")
+                val excluded = listOf(
+                    "deepseek-r1t-chimera",
+                    "gemma-3n-e2b-it",
+                    "deepseek-r1t-chimera",
+                    "gemini-2.0-flash-exp",
+                    "gemma-3-4b-it",
+                    "gemma-3-27b-it",
+                    "qwen3-4b",
+                    "lfm-2.5-1.2b-thinking",
+                    "lfm-2.5-1.2b-instruct"
+                )
+                val excludeNormalized = excludeModelId?.normalizeModelId()
                 val picked = cachedFreeModels
-                    .filter { m -> excluded.none { kw -> m.apiModel.contains(kw, ignoreCase = true) } }
+                    .filter { m ->
+                        // excluded.none { kw ->
+                        //     m.apiModel.contains(
+                        //         kw,
+                        //         ignoreCase = true
+                        //     )
+                        // }
+                        // Original keyword exclusion
+                        excluded.none { kw -> m.apiModel.contains(kw, ignoreCase = true) } &&
+                                // Also exclude the model that just returned 404 (ignore :free suffix differences)
+                                (excludeNormalized == null || m.apiModel.normalizeModelId() != excludeNormalized)
+                    }
                     .randomOrNull()
                 // If no other options remain after filtering, set selected_model to empty so the default model will be used
                 selected_model = picked?.apiModel.orEmpty()
-                Log.d("more", "ChatData, getStreamingResponse, pickedModel: ${picked?.displayName} / ${picked?.apiModel}")
+                Log.d(
+                    "more",
+                    "ChatData, getStreamingResponse, pickedModel: ${picked?.displayName} / ${picked?.apiModel}"
+                )
             }
-            val modelToUse = selected_model.ifEmpty {
+            modelToUse = selected_model.ifEmpty {
                 "anthropic/claude-3-5-sonnet-20241022"
             }
             Log.d("more", "ChatData, getStreamingResponse, modelToUse(random): $modelToUse")
@@ -330,6 +376,7 @@ object ChatData {
                     }
                 }
             } catch (e: IOException) {
+                Log.d("more", "ChatData, getStreamingResponse, responseBody, catch, e: $e")
                 // If we got some response before connection error, return what we have
                 if (fullResponse.isNotEmpty()) {
                     return@withContext Chat(
@@ -348,6 +395,7 @@ object ChatData {
                 modelUsed = modelToUse
             )
         } catch (e: Exception) {
+            Log.d("more", "ChatData, getStreamingResponse, catch, e: $e")
             // Re-throw if already formatted
             if (e.message?.contains("|") == true) {
                 throw e
@@ -361,19 +409,38 @@ object ChatData {
                         402 -> "INSUFFICIENT_CREDITS|Your account has insufficient credits"
                         403 -> "CONTENT_FLAGGED|Your input was flagged by moderation"
                         404 -> {
-                            // Model not found - try adding :free postfix
-                            val modelToUse = when {
-                                selected_model.isNotEmpty() -> selected_model
-                                else -> "anthropic/claude-3-5-sonnet-20241022"
-                            }
-                            // If model doesn't have :free, add it to exception list and retry
-                            if (!modelToUse.endsWith(":free", ignoreCase = true)) {
-                                val fixedModel = handle404Error(modelToUse)
-                                "MODEL_404_RETRY|Model not found. Retrying with corrected ID: $fixedModel"
+                            // Model not found - retry once with a different random model
+                            // {"message":"No endpoints found for xxx/yyy.","code":404}
+                            if (!retry404) {
+                                Log.w(
+                                    "more",
+                                    "ChatData, 404 MODEL_NOT_FOUND, retry once with a new random model. failed=$modelToUse"
+                                )
+                                return@withContext getStreamingResponse(
+                                    prompt = prompt,
+                                    conversationHistory = conversationHistory,
+                                    onChunk = onChunk,
+                                    retry404 = true,
+                                    // Exclude the model that just returned 404 to ensure a different one is chosen next time
+                                    excludeModelId = modelToUse,
+                                )
                             } else {
-                                "MODEL_NOT_FOUND|Model not available: $modelToUse"
+                                "MODEL_NOT_FOUND|No endpoints found for model: $modelToUse"
                             }
+                            // Model not found - try adding :free postfix
+                            // val modelToUse = when {
+                            //     selected_model.isNotEmpty() -> selected_model
+                            //     else -> "anthropic/claude-3-5-sonnet-20241022"
+                            // }
+                            // If model doesn't have :free, add it to exception list and retry
+                            // if (!modelToUse.endsWith(":free", ignoreCase = true)) {
+                            //     val fixedModel = handle404Error(modelToUse)
+                            //     "MODEL_404_RETRY|Model not found. Retrying with corrected ID: $fixedModel"
+                            // } else {
+                            //     "MODEL_NOT_FOUND|Model not available: $modelToUse"
+                            // }
                         }
+
                         408 -> "REQUEST_TIMEOUT|Your request timed out. Try again"
                         // Error occurred
                         429 -> "RATE_LIMITED|Too many requests. Please wait and retry"
@@ -382,6 +449,7 @@ object ChatData {
                         else -> "HTTP_ERROR|Error ${e.code()}: ${e.message()}"
                     }
                 }
+
                 e is SocketTimeoutException -> "TIMEOUT|Request timed out. Check your connection"
                 e is UnknownHostException -> "NO_INTERNET|No internet connection available"
                 e is ConnectException -> "CONNECTION_FAILED|Could not connect to server"
