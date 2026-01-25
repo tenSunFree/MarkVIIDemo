@@ -103,6 +103,7 @@ import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.FirebaseConfigManager
 import com.example.mark_vii_demo.core.data.GeminiClient
 import com.example.mark_vii_demo.core.data.ModelInfo
+import com.example.mark_vii_demo.features.chat.components.ChatMessageList
 import com.example.mark_vii_demo.features.chat.components.ChatQuickActionsPanel
 import com.example.mark_vii_demo.features.chat.components.ModelChatItem
 import com.example.mark_vii_demo.features.chat.components.ModelMenuContent
@@ -314,123 +315,24 @@ fun ChatScreen(
             .padding(top = paddingValues.calculateTopPadding())
     ) {
         // Chat messages list - extends to bottom of screen
-        Box(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Show centered prompt suggestions when chat is empty
-            if (chatState.showPromptSuggestions && chatState.chatList.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 75.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ChatQuickActionsPanel(
-                        onActionClick = { text ->
-                            chatViewModel.onEvent(ChatUiEvent.UpdatePrompt(text))
-                        }
-                    )
-                }
-            }
-
-            // Chat list
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 8.dp),
-                state = listState,
-                // reverseLayout = true,
-                contentPadding = PaddingValues(bottom = 140.dp)
-            ) {
-                itemsIndexed(
-                    items = chatState.chatList,
-                    key = { _, chat -> chat.id }
-                ) { index, chat ->
-                    AnimatedVisibility(
-                        visible = true,
-                        enter = fadeIn(animationSpec = tween(300)) +
-                                slideInVertically(
-                                    initialOffsetY = { it / 4 },
-                                    animationSpec = tween(
-                                        durationMillis = 300,
-                                        easing = FastOutSlowInEasing
-                                    )
-                                )
-                    ) {
-                        if (chat.isFromUser) {
-                            UserChatItem(
-                                prompt = chat.prompt,
-                                bitmap = chat.bitmap
-                            )
-                        } else {
-                            // Get the nearest previous user message for retry (skip error/model entries)
-                            val previousUserChat = chatState.chatList
-                                .take(index)
-                                .lastOrNull { it.isFromUser }
-                            // val previousUserChat = chatState.chatList
-                            //     .drop(index)
-                            //     .firstOrNull { it.isFromUser }
-
-                            ModelChatItem(
-                                response = chat.prompt,
-                                userPrompt = previousUserChat?.prompt ?: "",
-                                modelUsed = chat.modelUsed,
-                                isStreaming = chat.isStreaming,
-                                isError = chat.isError,
-                                freeModels = freeModels,
-                                geminiModels = geminiModels,
-                                currentApiProvider = currentApiProvider,
-                                hasImage = previousUserChat?.bitmap != null,
-                                onRetry = { _ ->
-                                    chatViewModel.onEvent(
-                                        ChatUiEvent.RetryPrompt(
-                                            previousUserChat?.prompt ?: "",
-                                            previousUserChat?.bitmap
-                                        )
-                                    )
-                                },
-                                onApiSwitch = { provider ->
-                                    chatViewModel.onEvent(ChatUiEvent.SwitchApiProvider(provider))
-                                },
-                                isTtsReady = isTtsInitialized && textToSpeech != null,
-                                isTtsSpeaking = textToSpeech?.isSpeaking == true,
-                                onToggleTts = { cleanText ->
-                                    if (textToSpeech?.isSpeaking == true) {
-                                        textToSpeech.stop()
-                                        Toast.makeText(
-                                            context,
-                                            "Speech stopped",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    } else {
-                                        onSpeakText(cleanText)
-                                        Toast.makeText(context, "Speaking...", Toast.LENGTH_SHORT)
-                                            .show()
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Fade effect at bottom
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.background
-                            )
-                        )
-                    )
-            )
-        }
-
+        ChatMessageList(
+            chatState = chatState,
+            listState = listState,
+            freeModels = freeModels,
+            geminiModels = geminiModels,
+            isTtsInitialized = isTtsInitialized,
+            textToSpeech = textToSpeech,
+            onActionClick = { text ->
+                chatViewModel.onEvent(ChatUiEvent.UpdatePrompt(text))
+            },
+            onRetry = { prompt, bitmap ->
+                chatViewModel.onEvent(ChatUiEvent.RetryPrompt(prompt, bitmap))
+            },
+            onApiSwitch = { provider ->
+                chatViewModel.onEvent(ChatUiEvent.SwitchApiProvider(provider))
+            },
+            onSpeakText = onSpeakText
+        )
         // Prompt box - overlays at bottom
         Column(
             modifier = Modifier

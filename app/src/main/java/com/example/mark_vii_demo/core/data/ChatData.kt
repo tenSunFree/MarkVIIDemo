@@ -272,7 +272,8 @@ object ChatData {
                     "gemma-3-27b-it",
                     "qwen3-4b",
                     "lfm-2.5-1.2b-thinking",
-                    "lfm-2.5-1.2b-instruct"
+                    "lfm-2.5-1.2b-instruct",
+                    "molmo-2-8b"
                 )
                 val excludeNormalized = excludeModelId?.normalizeModelId()
                 val picked = cachedFreeModels
