@@ -271,6 +271,7 @@ object ChatData {
                     "gemma-3-4b-it",
                     "gemma-3-27b-it",
                     "qwen3-4b",
+                    "qwen-2.5-vl-7b-instruct",
                     "lfm-2.5-1.2b-thinking",
                     "lfm-2.5-1.2b-instruct",
                     "molmo-2-8b"
@@ -409,7 +410,7 @@ object ChatData {
                         401 -> "UNAUTHORIZED|Invalid API key or expired session"
                         402 -> "INSUFFICIENT_CREDITS|Your account has insufficient credits"
                         403 -> "CONTENT_FLAGGED|Your input was flagged by moderation"
-                        404 -> {
+                        404, 429 -> {
                             // Model not found - retry once with a different random model
                             // {"message":"No endpoints found for xxx/yyy.","code":404}
                             if (!retry404) {
@@ -444,7 +445,6 @@ object ChatData {
 
                         408 -> "REQUEST_TIMEOUT|Your request timed out. Try again"
                         // Error occurred
-                        429 -> "RATE_LIMITED|Too many requests. Please wait and retry"
                         502 -> "MODEL_DOWN|Model is currently unavailable or returned invalid response"
                         503 -> "NO_PROVIDER|No available model provider meets your requirements"
                         else -> "HTTP_ERROR|Error ${e.code()}: ${e.message()}"

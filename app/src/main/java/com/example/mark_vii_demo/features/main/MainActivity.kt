@@ -1,7 +1,6 @@
 package com.example.mark_vii_demo.features.main
 
 import android.content.Intent
-import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.speech.RecognizerIntent
@@ -12,30 +11,17 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -53,30 +39,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.mark_vii_demo.features.chat.ChatScreen
 import com.example.mark_vii_demo.features.main.components.DrawerContent
 import com.example.mark_vii_demo.features.main.components.InfoSetting
-import com.example.mark_vii_demo.R
 import com.example.mark_vii_demo.core.data.AppTheme
 import com.example.mark_vii_demo.core.data.AuthManager
 import com.example.mark_vii_demo.core.data.ChatHistoryManager
@@ -184,17 +161,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             // Set window colors based on theme
-            val backgroundColor =
-                if (darkTheme) Color.BLACK else Color.WHITE
-            val statusBarColor =
-                if (darkTheme) Color.parseColor("#1A1A2E") else Color.parseColor(
-                    "#F5F5F5"
-                )
-
+            val backgroundColor = if (darkTheme) Color.Black else Color.White
+            val statusBarColor = if (darkTheme) Color.Black else Color.White
             SideEffect {
-                window.decorView.setBackgroundColor(backgroundColor)
-                window.statusBarColor = statusBarColor
-                window.navigationBarColor = backgroundColor
+                window.decorView.setBackgroundColor(backgroundColor.toArgb())
+                window.statusBarColor = Color.Black.toArgb()
+                window.navigationBarColor = backgroundColor.toArgb()
+                WindowCompat.getInsetsController(window, window.decorView)
+                    .isAppearanceLightStatusBars = !darkTheme
             }
 
             MarkVIITheme(darkTheme = darkTheme) {

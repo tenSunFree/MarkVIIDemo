@@ -4,11 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,19 +21,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mark_vii_demo.features.chat.ApiProvider
-import com.example.mark_vii_demo.R
 import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.ModelInfo
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
@@ -47,11 +38,11 @@ import kotlinx.coroutines.delay
 
 /**
  * model chat text bubble
- * 抽出後的 ModelChatItem
+ * Extracted ModelChatItem
  *
- * 關鍵調整：
- * - 不再直接依賴 MainActivity 的 textToSpeech / speakText / isTtsInitialized
- * - 改成由呼叫端注入：
+ * Key changes:
+ * - No longer directly depend on MainActivity's textToSpeech / speakText / isTtsInitialized
+ * - Switched to being injected by the caller:
  *   isTtsReady, isTtsSpeaking, onToggleTts
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
@@ -68,15 +59,13 @@ fun ModelChatItem(
     hasImage: Boolean = false,
     isError: Boolean = false,
     onApiSwitch: (ApiProvider) -> Unit = {},
-
-    // ✅ TTS 由外部注入
+    // Text-to-speech (TTS) injected from outside
     isTtsReady: Boolean = false,
     isTtsSpeaking: Boolean = false,
     onToggleTts: (String) -> Unit = {},
-
-    // ✅ 若你想把 PDF 行為也抽成外部注入
-    //    可以改用 onExportSave/onExportShare
-    //    但目前先保留 PdfGenerator 直接呼叫（最少改動）
+    // If you want to inject PDF behavior externally,
+    // you can use onExportSave / onExportShare instead,
+    // but for now keep direct PdfGenerator calls (minimal changes).
 ) {
     val appColors = LocalAppColors.current
     val context = LocalContext.current
@@ -84,10 +73,8 @@ fun ModelChatItem(
     var showModelSelector by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var selectedApiProvider by remember { mutableStateOf(currentApiProvider) }
-
     // Unified Smooth Streaming Engine
     var displayedText by remember { mutableStateOf("") }
-
     LaunchedEffect(isStreaming) {
         if (isStreaming) {
             displayedText = ""
@@ -95,36 +82,29 @@ fun ModelChatItem(
             displayedText = response
         }
     }
-
     val currentResponse by rememberUpdatedState(response)
-
     LaunchedEffect(isStreaming) {
         if (isStreaming) {
             while (true) {
                 val target = currentResponse
                 val current = displayedText
-
                 if (current.length < target.length) {
                     val diff = target.length - current.length
-
                     val (charsToProcess, delayMs) = when {
                         diff > 50 -> 5 to 5L
                         diff > 20 -> 2 to 10L
                         diff > 5 -> 1 to 15L
                         else -> 1 to 30L
                     }
-
                     val nextIndex =
                         (current.length + charsToProcess).coerceAtMost(target.length)
                     val newText = target.substring(0, nextIndex)
                     displayedText = newText
-
                     if (newText.length % 3 == 0) {
                         hapticFeedback.performHapticFeedback(
                             androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove
                         )
                     }
-
                     delay(delayMs)
                 } else {
                     delay(50)
@@ -133,7 +113,6 @@ fun ModelChatItem(
             }
         }
     }
-
     val brandName = remember(modelUsed) {
         if (modelUsed.isNotEmpty()) {
             val brand = modelUsed.substringBefore("/")
@@ -141,11 +120,9 @@ fun ModelChatItem(
                 ?: brand.replaceFirstChar { it.uppercase() }
         } else ""
     }
-
     val headerText = remember(brandName) {
         if (brandName.isNotEmpty()) "Mark VII  x  $brandName" else "Mark VII"
     }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -157,73 +134,28 @@ fun ModelChatItem(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                Text(
-                    text = headerText,
-                    fontSize = 18.sp,
-                    fontFamily = FontFamily(Font(R.font.typographica)),
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                if (modelUsed.isNotEmpty()) {
-                    Text(
-                        text = modelUsed.replace(":free", ""),
-                        fontSize = 12.sp,
-                        color = appColors.textSecondary,
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
-
+                // Text(
+                //     text = headerText,
+                //     fontSize = 18.sp,
+                //     fontFamily = FontFamily(Font(R.font.typographica)),
+                //     color = MaterialTheme.colorScheme.onSurface
+                // )
+                // if (modelUsed.isNotEmpty()) {
+                //     Text(
+                //         text = modelUsed.replace(":free", ""),
+                //         fontSize = 12.sp,
+                //         color = appColors.textSecondary,
+                //         modifier = Modifier.padding(top = 2.dp)
+                //     )
+                // }
                 if (isStreaming) {
-                    val infiniteTransition =
-                        rememberInfiniteTransition(label = "cursor")
-                    val cursorAlpha by infiniteTransition.animateFloat(
-                        initialValue = 0.3f,
-                        targetValue = 1f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(800, easing = FastOutSlowInEasing),
-                            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-                        ),
-                        label = "cursor_blink"
-                    )
-
-                    val cursorScale by infiniteTransition.animateFloat(
-                        initialValue = 0.95f,
-                        targetValue = 1.05f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(800, easing = FastOutSlowInEasing),
-                            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-                        ),
-                        label = "cursor_scale"
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    StreamingIndicator(
+                        accentColor = Color.White,
+                        secondaryTextColor = appColors.textSecondary,
                         modifier = Modifier.padding(vertical = 8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 4.dp)
-                                .alpha(cursorAlpha)
-                                .graphicsLayer(
-                                    scaleX = cursorScale,
-                                    scaleY = cursorScale
-                                )
-                        ) {
-                            Text(
-                                text = "▋",
-                                color = appColors.accent,
-                                fontSize = 16.sp
-                            )
-                        }
-                        Text(
-                            text = "Generating response...",
-                            fontSize = 12.sp,
-                            color = appColors.textSecondary
-                        )
-                    }
+                    )
                 }
-
                 Spacer(modifier = Modifier.height(8.dp))
-
                 if (displayedText.isNotEmpty()) {
                     if (isError) {
                         Text(
@@ -249,7 +181,6 @@ fun ModelChatItem(
                 }
             }
         }
-
         // Action buttons row
         if (!isStreaming && response.isNotEmpty()) {
             Row(
@@ -288,7 +219,6 @@ fun ModelChatItem(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-
                 // Speak (TTS)
                 IconButton(
                     onClick = {
@@ -304,7 +234,6 @@ fun ModelChatItem(
                                 .replace("#", "")
                                 .replace("`", "")
                                 .trim()
-
                             onToggleTts(cleanText)
                         }
                     },
@@ -312,7 +241,6 @@ fun ModelChatItem(
                 ) {
                     TtsIcon(isSpeaking = isTtsSpeaking)
                 }
-
                 // Retry
                 IconButton(
                     onClick = { showModelSelector = true },
@@ -325,7 +253,6 @@ fun ModelChatItem(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-
                 // Export PDF
                 IconButton(
                     onClick = { showExportDialog = true },
@@ -338,7 +265,6 @@ fun ModelChatItem(
                         modifier = Modifier.size(20.dp)
                     )
                 }
-
                 // Share
                 IconButton(
                     onClick = {
@@ -360,7 +286,6 @@ fun ModelChatItem(
                 }
             }
         }
-
         // Model selector dialog
         if (showModelSelector) {
             AlertDialog(
@@ -410,9 +335,7 @@ fun ModelChatItem(
                                         FontWeight.SemiBold else FontWeight.Normal
                                 )
                             }
-
                             Spacer(modifier = Modifier.width(8.dp))
-
                             // OpenRouter
                             Box(
                                 modifier = Modifier
@@ -448,7 +371,6 @@ fun ModelChatItem(
                                 )
                             }
                         }
-
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -456,10 +378,8 @@ fun ModelChatItem(
                                 .height(1.dp)
                                 .background(appColors.divider)
                         )
-
                         val currentModels =
                             if (selectedApiProvider == ApiProvider.GEMINI) geminiModels else freeModels
-
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -536,8 +456,7 @@ fun ModelChatItem(
                 }
             )
         }
-
-        // Export Dialog (保留你原邏輯)
+        // Export Dialog
         if (showExportDialog) {
             AlertDialog(
                 onDismissRequest = { showExportDialog = false },
