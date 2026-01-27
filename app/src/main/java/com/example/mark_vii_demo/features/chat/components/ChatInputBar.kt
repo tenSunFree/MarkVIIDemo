@@ -81,6 +81,9 @@ fun ChatInputBar(
     appColors: AppColors // Custom color palette
 ) {
     val context = LocalContext.current
+    val canSendOrStop =
+        chatState.isGeneratingResponse || chatState.prompt.isNotEmpty() || bitmap != null
+    val showMic = !canSendOrStop
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -194,38 +197,40 @@ fun ChatInputBar(
                         )
                     )
                     // Voice input button logic
-                    IconButton(
-                        onClick = {
-                            try {
-                                val intent =
-                                    Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                                        putExtra(
-                                            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                                            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                                        )
-                                        putExtra(
-                                            RecognizerIntent.EXTRA_LANGUAGE,
-                                            Locale.getDefault().toLanguageTag()
-                                        )
-                                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now...")
-                                    }
-                                voiceInputLauncher.launch(intent)
-                            } catch (e: Exception) {
-                                Toast.makeText(
-                                    context,
-                                    "Voice input not available",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                        },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.chat_microphone),
-                            contentDescription = "Voice input",
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(22.dp)
-                        )
+                    if (showMic) {
+                        IconButton(
+                            onClick = {
+                                try {
+                                    val intent =
+                                        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                            putExtra(
+                                                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                            )
+                                            putExtra(
+                                                RecognizerIntent.EXTRA_LANGUAGE,
+                                                Locale.getDefault().toLanguageTag()
+                                            )
+                                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now...")
+                                        }
+                                    voiceInputLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context,
+                                        "Voice input not available",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.chat_microphone),
+                                contentDescription = "Voice input",
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
                     // Send/Stop button
                     SendActionButton(
@@ -275,8 +280,7 @@ private fun SendActionButton(
             .clip(CircleShape)
             .background(
                 when {
-                    isGenerating -> appColors.error
-                    isEnabled -> appColors.accent
+                    isGenerating || isEnabled -> Color.White
                     else -> appColors.surfaceTertiary
                 }
             )
@@ -287,9 +291,9 @@ private fun SendActionButton(
     ) {
         AnimatedContent(targetState = isGenerating, label = "icon_animation") { generating ->
             Icon(
-                painter = painterResource(id = if (generating) R.drawable.chat_add else R.drawable.chat_up_arrow),
+                painter = painterResource(id = if (generating) R.drawable.chat_stop else R.drawable.chat_up_arrow),
                 contentDescription = null,
-                tint = if (generating) Color.White else Color.Unspecified,
+                tint = if (generating) Color.Black else Color.Unspecified,
                 modifier = Modifier.size(18.dp)
             )
         }
