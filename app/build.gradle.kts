@@ -63,6 +63,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.preference:preference-ktx:1.2.1")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("com.google.android.material:material:1.12.0")
     implementation(libs.androidx.compose.foundation)
     testImplementation("junit:junit:4.13.2")
@@ -119,16 +120,3 @@ dependencies {
     // MLKit Language Identification for TextToSpeech
     implementation("com.google.mlkit:language-id:17.0.6")
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

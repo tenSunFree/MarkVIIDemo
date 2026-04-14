@@ -118,13 +118,12 @@ object OpenRouterClient {
     private var apiKey: String = ""
     
     fun updateApiKey(newKey: String) {
-        if (newKey.isNotEmpty()) {
-            apiKey = newKey
-        }
+        apiKey = newKey.trim()
     }
     
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
+        redactHeader("Authorization")
     }
     
     private val okHttpClient = OkHttpClient.Builder()

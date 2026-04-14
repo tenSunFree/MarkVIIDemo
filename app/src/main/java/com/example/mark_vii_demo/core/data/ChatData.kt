@@ -49,10 +49,16 @@ object ChatData {
      * This is the ONLY way to set the API key
      */
     fun updateApiKey(newKey: String) {
-        if (newKey.isNotEmpty()) {
-            openrouter_api_key = newKey
+        val normalizedKey = newKey.trim()
+        if (normalizedKey.isNotEmpty()) {
+            openrouter_api_key = normalizedKey
             OpenRouterClient.updateApiKey(openrouter_api_key)
         }
+    }
+
+    fun clearApiKey() {
+        openrouter_api_key = ""
+        OpenRouterClient.updateApiKey("")
     }
 
     private fun isOpenRouterTimeout(e: Throwable, body: String?): Boolean {

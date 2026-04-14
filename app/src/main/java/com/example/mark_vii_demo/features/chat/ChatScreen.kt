@@ -103,6 +103,7 @@ import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.FirebaseConfigManager
 import com.example.mark_vii_demo.core.data.GeminiClient
 import com.example.mark_vii_demo.core.data.ModelInfo
+import com.example.mark_vii_demo.core.data.SecureUserConfigManager
 import com.example.mark_vii_demo.features.chat.components.ChatInputBar
 import com.example.mark_vii_demo.features.chat.components.ChatMessageList
 import com.example.mark_vii_demo.features.chat.components.ChatQuickActionsPanel
@@ -159,8 +160,9 @@ fun ChatScreen(
 
     val appColors = LocalAppColors.current
 
-    // Observe Firebase API keys and Gemini models
-    val firebaseApiKey by FirebaseConfigManager.apiKey.collectAsState()
+    // Observe local OpenRouter key and Firebase-backed Gemini/model config
+    val userConfig by SecureUserConfigManager.config.collectAsState()
+    val localOpenRouterKey = userConfig.openRouterApiKey
     val geminiApiKey by FirebaseConfigManager.geminiApiKey.collectAsState()
     val firebaseGeminiModels by FirebaseConfigManager.geminiModels.collectAsState()
 
@@ -180,10 +182,10 @@ fun ChatScreen(
         FirebaseConfigManager.initialize()
     }
 
-    // Update API keys when Firebase data changes
-    LaunchedEffect(firebaseApiKey) {
-        if (firebaseApiKey.isNotEmpty()) {
-            ChatData.updateApiKey(firebaseApiKey)
+    // Update OpenRouter key from local secure storage.
+    LaunchedEffect(localOpenRouterKey) {
+        if (localOpenRouterKey.isNotEmpty()) {
+            ChatData.updateApiKey(localOpenRouterKey)
         }
     }
     LaunchedEffect(geminiApiKey) {
@@ -195,10 +197,9 @@ fun ChatScreen(
     // Load free models from OpenRouter AFTER Firebase initializes
     val exceptionModels by FirebaseConfigManager.exceptionModels.collectAsState()
 
-    // Log.d("more", "ChatScreen, firebaseApiKey: $firebaseApiKey")
-    LaunchedEffect(firebaseApiKey, exceptionModels) {
-        if (firebaseApiKey.isNotEmpty()) {
-            val modelsCacheKey = "$firebaseApiKey|${exceptionModels.hashCode()}"
+    LaunchedEffect(localOpenRouterKey, exceptionModels) {
+        if (localOpenRouterKey.isNotEmpty()) {
+            val modelsCacheKey = "${localOpenRouterKey.hashCode()}|${exceptionModels.hashCode()}"
             if (ChatData.cachedFreeModels.isNotEmpty() && ChatData.cachedFreeModelsKey == modelsCacheKey) {
                 freeModels = ChatData.cachedFreeModels
                 isLoadingModels = false
@@ -215,11 +216,14 @@ fun ChatScreen(
                     isLoadingModels = false
                 }
             }
+        } else {
+            freeModels = emptyList()
+            isLoadingModels = false
         }
     }
 
     // Show loading popup while models are loading
-    if (isLoadingModels) {
+    if (isLoadingModels && localOpenRouterKey.isNotEmpty()) {
         AlertDialog(
             onDismissRequest = { },
             containerColor = MaterialTheme.colorScheme.surface,

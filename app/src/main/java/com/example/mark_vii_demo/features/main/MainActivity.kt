@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -52,11 +53,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.mark_vii_demo.features.chat.ChatScreen
+import com.example.mark_vii_demo.features.main.components.ApiKeySetupDialog
 import com.example.mark_vii_demo.features.main.components.DrawerContent
 import com.example.mark_vii_demo.features.main.components.InfoSetting
 import com.example.mark_vii_demo.core.data.AppTheme
 import com.example.mark_vii_demo.core.data.AuthManager
+import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.ChatHistoryManager
+import com.example.mark_vii_demo.core.data.SecureUserConfigManager
 import com.example.mark_vii_demo.core.data.ThemePreferences
 import com.example.mark_vii_demo.features.chat.ChatUiEvent
 import com.example.mark_vii_demo.features.chat.ChatViewModel
@@ -136,13 +140,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 //        Thread.sleep(1000) // splash screen delay
         installSplashScreen()  // splash screen ui
-
         // Initialize ChatHistoryManager
         ChatHistoryManager.init(applicationContext)
-
         // Initialize ThemePreferences
         ThemePreferences.init(applicationContext)
-
+        // Initialize secure local OpenRouter key storage
+        SecureUserConfigManager.init(applicationContext)
         // Initialize TextToSpeech
         textToSpeech = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
@@ -150,7 +153,6 @@ class MainActivity : AppCompatActivity() {
                 // Language will be set dynamically based on detected content
             }
         }
-
         setContent {
             // Observe theme changes
             val currentTheme by ThemePreferences.currentTheme.collectAsState()
@@ -159,7 +161,6 @@ class MainActivity : AppCompatActivity() {
                 AppTheme.DARK -> true
                 AppTheme.SYSTEM_DEFAULT -> isSystemInDarkTheme()
             }
-
             // Set window colors based on theme
             val backgroundColor = if (darkTheme) Color.Black else Color.White
             val statusBarColor = if (darkTheme) Color.Black else Color.White
@@ -170,7 +171,6 @@ class MainActivity : AppCompatActivity() {
                 WindowCompat.getInsetsController(window, window.decorView)
                     .isAppearanceLightStatusBars = !darkTheme
             }
-
             MarkVIITheme(darkTheme = darkTheme) {
                 var opentimes by remember { mutableIntStateOf(0) }
                 // A surface container using the 'background' color from the theme
@@ -178,14 +178,12 @@ class MainActivity : AppCompatActivity() {
                     modifier = Modifier.Companion.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 )
-
                 {
 //                    for switching between from home screen to infoTab
                     val navController = rememberNavController()
                     NavHost(navController = navController, startDestination = "home", builder = {
                         composable("home") {
                             opentimes++
-
                             // ViewModel needs to be at this scope to be accessible by both topBar and content
                             val chaViewModel = viewModel<ChatViewModel>()
                             val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -193,8 +191,13 @@ class MainActivity : AppCompatActivity() {
                             var showSettings by remember { mutableStateOf(false) } // Settings screen state
                             val isSigningIn by isSigningInState.collectAsState() // Sign-in loading state from Activity
                             val chatState by chaViewModel.chatState.collectAsState()
+                            val userConfig by SecureUserConfigManager.config.collectAsState()
                             val appColors = LocalAppColors.current // Get theme colors
-
+                            LaunchedEffect(userConfig.openRouterApiKey) {
+                                if (userConfig.openRouterApiKey.isNotEmpty()) {
+                                    ChatData.updateApiKey(userConfig.openRouterApiKey)
+                                }
+                            }
                             Box(modifier = Modifier.Companion.fillMaxSize()) {
                                 ModalNavigationDrawer(
                                     drawerState = drawerState, drawerContent = {
@@ -246,23 +249,27 @@ class MainActivity : AppCompatActivity() {
                                             onSpeakText = { text -> speakText(text) })  // starting chat screen ui
                                     }
                                 } // End ModalNavigationDrawer
-
                                 // Settings screen overlay
                                 if (showSettings) {
                                     // Handle back button when settings is open
                                     BackHandler {
                                         showSettings = false
                                     }
-
                                     SettingsScreen(
                                         onBackClick = { showSettings = false },
                                         onSignOut = {
                                             chaViewModel.onEvent(ChatUiEvent.SignOut)
                                             showSettings = false
                                         },
+                                        onResetApiKey = {
+                                            SecureUserConfigManager.clearCredentials()
+                                            ChatData.clearApiKey()
+                                            ChatData.cachedFreeModels = emptyList()
+                                            ChatData.cachedFreeModelsKey = ""
+                                            showSettings = false
+                                        },
                                         onThemeChanged = { /* Theme change is handled via StateFlow */ })
                                 }
-
                                 // Loading overlay during sign-in - covers entire app
                                 if (isSigningIn) {
                                     Box(
@@ -294,19 +301,23 @@ class MainActivity : AppCompatActivity() {
                                         }
                                     }
                                 }
-
+                                if (!userConfig.isConfigured) {
+                                    ApiKeySetupDialog(
+                                        initialUserName = userConfig.userName,
+                                        initialApiKey = userConfig.openRouterApiKey,
+                                        onConfirm = { name, key ->
+                                            SecureUserConfigManager.saveCredentials(name, key)
+                                            ChatData.updateApiKey(key)
+                                        }
+                                    )
+                                }
                             } // Box
-
                         }
                         composable("info_screen") {
                             InfoSetting() // starting infoTab ui (About section)
                         }
-
                     })
-
-
                 }
-
             }
         }
     }
@@ -320,12 +331,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun speakText(text: String) {
         if (textToSpeech == null) return
-
         // Detect language using MLKit
         val languageIdentifier = LanguageIdentification.getClient(
             LanguageIdentificationOptions.Builder().setConfidenceThreshold(0.34f).build()
         )
-
         languageIdentifier.identifyLanguage(text).addOnSuccessListener { languageCode ->
             if (languageCode != "und") {
                 // Map MLKit language codes to Locale
@@ -345,7 +354,6 @@ class MainActivity : AppCompatActivity() {
                     "en" -> Locale.US
                     else -> Locale.US
                 }
-
                 // Set language if available
                 val result = textToSpeech?.setLanguage(locale)
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
@@ -353,7 +361,6 @@ class MainActivity : AppCompatActivity() {
                     textToSpeech?.setLanguage(Locale.US)
                 }
             }
-
             // Speak the text after setting language
             speakTextWithLanguage(text)
         }.addOnFailureListener {
@@ -365,17 +372,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun speakTextWithLanguage(text: String) {
         if (textToSpeech == null) return
-
         val maxLength = TextToSpeech.getMaxSpeechInputLength() - 100 // Buffer
-
         if (text.length <= maxLength) {
             textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
             return
         }
-
         // Flush existing
         textToSpeech?.speak("", TextToSpeech.QUEUE_FLUSH, null, null)
-
         var remainingText = text
         while (remainingText.isNotEmpty()) {
             val chunk = if (remainingText.length > maxLength) {
@@ -387,9 +390,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 remainingText
             }
-
             textToSpeech?.speak(chunk, TextToSpeech.QUEUE_ADD, null, null)
-
             remainingText = if (chunk.length < remainingText.length) {
                 remainingText.substring(chunk.length).trim()
             } else {
