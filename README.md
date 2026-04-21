@@ -26,6 +26,10 @@ This project is for learning and technical practice.
   <img src="https://i.postimg.cc/VsM985BP/Screenshot-20260127-172515.png" height="460"/>
 </p> 
 
+<p align="left">
+  <img src="https://i.postimg.cc/NM4s5xyN/367579.jpg" height="460"/>
+</p> 
+
 ---
 
 ## Features   
