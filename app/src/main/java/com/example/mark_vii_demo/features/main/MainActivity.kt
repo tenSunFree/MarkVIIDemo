@@ -54,7 +54,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.mark_vii_demo.features.chat.ChatScreen
 import com.example.mark_vii_demo.features.main.components.ApiKeySetupDialog
-import com.example.mark_vii_demo.features.main.components.DrawerContent
 import com.example.mark_vii_demo.features.main.components.InfoSetting
 import com.example.mark_vii_demo.core.data.AppTheme
 import com.example.mark_vii_demo.core.data.AuthManager
@@ -202,22 +201,22 @@ class MainActivity : AppCompatActivity() {
                                 ModalNavigationDrawer(
                                     drawerState = drawerState, drawerContent = {
                                         ModalDrawerSheet {
-                                            DrawerContent(
-                                                chatViewModel = chaViewModel,
-                                                onDismiss = {
-                                                    coroutineScope.launch {
-                                                        drawerState.close()
-                                                    }
-                                                },
-                                                onSettingsClick = {
-                                                    coroutineScope.launch {
-                                                        drawerState.close()
-                                                    }
-                                                    showSettings = true
-                                                },
-                                                onSigningInChanged = { signing ->
-                                                    isSigningInState.value = signing
-                                                })
+                                            // DrawerContent(
+                                            //     chatViewModel = chaViewModel,
+                                            //     onDismiss = {
+                                            //         coroutineScope.launch {
+                                            //             drawerState.close()
+                                            //         }
+                                            //     },
+                                            //     onSettingsClick = {
+                                            //         coroutineScope.launch {
+                                            //             drawerState.close()
+                                            //         }
+                                            //         showSettings = true
+                                            //     },
+                                            //     onSigningInChanged = { signing ->
+                                            //         isSigningInState.value = signing
+                                            //     })
                                         }
                                     }, gesturesEnabled = true
                                 ) {

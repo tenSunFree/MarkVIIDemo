@@ -1,61 +1,43 @@
 package com.example.mark_vii_demo.features.chat.components
 
-import androidx.activity.result.ActivityResultLauncher
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.mark_vii_demo.features.chat.ChatState
-import com.example.mark_vii_demo.features.chat.ChatUiEvent
-import com.example.mark_vii_demo.ui.theme.AppColors
 import android.content.Intent
 import android.speech.RecognizerIntent
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.mark_vii_demo.R
+import com.example.mark_vii_demo.features.chat.ChatState
+import com.example.mark_vii_demo.features.chat.ChatUiEvent
+import com.example.mark_vii_demo.ui.theme.AppColors
 import java.util.Locale
 
 /**
@@ -78,12 +60,15 @@ fun ChatInputBar(
     onEvent: (ChatUiEvent) -> Unit,
     onClearImage: () -> Unit,
     voiceInputLauncher: ActivityResultLauncher<Intent>,
-    appColors: AppColors // Custom color palette
+    appColors: AppColors,
+    onToggleAttachMenu: () -> Unit,
+    onDismissAttachMenu: () -> Unit
 ) {
     val context = LocalContext.current
     val canSendOrStop =
         chatState.isGeneratingResponse || chatState.prompt.isNotEmpty() || bitmap != null
     val showMic = !canSendOrStop
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -91,7 +76,7 @@ fun ChatInputBar(
             .navigationBarsPadding()
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        // Image preview
+        // Image Preview
         bitmap?.let {
             Box(
                 modifier = Modifier
@@ -138,30 +123,71 @@ fun ChatInputBar(
                 }
             }
         }
-        // Input control row
+        // Attached file preview
+        chatState.attachedFileName?.let { fileName ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(appColors.surfaceVariant)
+                    .border(1.dp, appColors.divider, RoundedCornerShape(16.dp))
+                    .padding(10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Description,
+                        contentDescription = "Attached file",
+                        tint = appColors.textSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = fileName,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.Close,
+                        contentDescription = "Remove file",
+                        tint = appColors.textSecondary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { onEvent(ChatUiEvent.RemoveAttachedFile) }
+                    )
+                }
+            }
+        }
+        // Input column
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Plus button
-            IconButton(
-                onClick = { /* TODO */ },
-                modifier = Modifier.size(50.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.chat_add),
-                    contentDescription = "Add",
-                    tint = Color.Unspecified,
-                    modifier = Modifier.fillMaxSize()
-                )
+            Box {
+                IconButton(
+                    onClick = onToggleAttachMenu,
+                    modifier = Modifier.size(50.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.chat_add),
+                        contentDescription = "Add",
+                        tint = Color.Unspecified,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(8.dp))
-            // Text input container
+            // Input box
             Box(
                 modifier = Modifier
-                    .weight(1f) // Let the input field take up the remaining space
+                    .weight(1f)
                     .shadow(0.dp, RoundedCornerShape(24.dp))
                     .clip(RoundedCornerShape(24.dp))
                     .background(Color(0xFF212121))
@@ -196,7 +222,6 @@ fun ChatInputBar(
                             cursorColor = Color.White
                         )
                     )
-                    // Voice input button logic
                     if (showMic) {
                         IconButton(
                             onClick = {
@@ -232,7 +257,6 @@ fun ChatInputBar(
                             )
                         }
                     }
-                    // Send/Stop button
                     SendActionButton(
                         isGenerating = chatState.isGeneratingResponse,
                         isEnabled = chatState.isGeneratingResponse || chatState.prompt.isNotEmpty() || bitmap != null,
@@ -273,10 +297,7 @@ private fun SendActionButton(
     Box(
         modifier = Modifier
             .size(36.dp)
-            .graphicsLayer {
-                scaleX = buttonScale
-                scaleY = buttonScale
-            }
+            .graphicsLayer { scaleX = buttonScale; scaleY = buttonScale }
             .clip(CircleShape)
             .background(
                 when {

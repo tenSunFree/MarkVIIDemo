@@ -505,5 +505,109 @@ object ChatData {
             }
         }
     }
+
+    /**
+     * Convert the bitmap into a base64 data URL for use by OpenRouter vision.
+     */
+    private fun bitmapToBase64DataUrl(bitmap: Bitmap): String {
+        val output = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
+        val base64 = Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
+        return "data:image/jpeg;base64,$base64"
+    }
+
+    /**
+     * Streaming response with images (OpenRouter vision)
+     */
+    suspend fun getStreamingResponseWithImage(
+        prompt: String,
+        bitmap: Bitmap,
+        conversationHistory: List<Chat> = emptyList(),
+        onChunk: (String) -> Unit
+    ): Chat = withContext(Dispatchers.IO) {
+        if (openrouter_api_key.isEmpty()) {
+            throw Exception("API_KEY_MISSING|API key is not configured")
+        }
+
+        val modelToUse = selected_model.ifEmpty { "openai/gpt-4o-mini" }
+
+        val messages = mutableListOf<Message>()
+
+        // Historical Dialogue (Plain Text)
+        conversationHistory.takeLast(4).forEach { chat ->
+            messages.add(
+                Message(
+                    role = if (chat.isFromUser) "user" else "assistant",
+                    content = listOf(Content(type = "text", text = chat.prompt))
+                )
+            )
+        }
+
+        // This latest post includes a picture
+        messages.add(
+            Message(
+                role = "user",
+                content = listOf(
+                    Content(type = "text", text = prompt),
+                    Content(
+                        type = "image_url",
+                        image_url = ImageUrl(url = bitmapToBase64DataUrl(bitmap))
+                    )
+                )
+            )
+        )
+
+        val request = OpenRouterRequest(
+            model = modelToUse,
+            messages = messages,
+            max_tokens = 2000,
+            temperature = 0.7,
+            stream = true
+        )
+
+        val responseBody = OpenRouterClient.api.chatCompletionStream(request)
+        val fullResponse = StringBuilder()
+
+        try {
+            responseBody.byteStream().bufferedReader().use { reader ->
+                reader.lineSequence().forEach { line ->
+                    if (line.startsWith("data: ")) {
+                        val data = line.substring(6)
+                        if (data == "[DONE]") return@forEach
+                        try {
+                            val json = com.google.gson.Gson()
+                                .fromJson(data, com.google.gson.JsonObject::class.java)
+                            val delta = json.getAsJsonArray("choices")
+                                ?.get(0)?.asJsonObject
+                                ?.getAsJsonObject("delta")
+                                ?.get("content")?.asString
+                            if (delta != null) {
+                                fullResponse.append(delta)
+                                withContext(Dispatchers.Main) { onChunk(delta) }
+                            }
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            if (fullResponse.isNotEmpty()) {
+                return@withContext Chat(
+                    prompt = fullResponse.toString(),
+                    bitmap = null,
+                    isFromUser = false,
+                    modelUsed = modelToUse
+                )
+            }
+            throw Exception("NETWORK_ERROR|Connection interrupted: ${e.message}")
+        }
+
+        Chat(
+            prompt = fullResponse.toString(),
+            bitmap = null,
+            isFromUser = false,
+            modelUsed = modelToUse
+        )
+    }
 }
 

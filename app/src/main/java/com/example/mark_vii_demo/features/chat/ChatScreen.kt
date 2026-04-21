@@ -1,70 +1,31 @@
 package com.example.mark_vii_demo.features.chat
 
-import android.R.attr.languageTag
 import android.content.Intent
-import android.os.Build
-import android.speech.RecognizerIntent
+import android.net.Uri
 import android.speech.tts.TextToSpeech
-import android.util.Log
-import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.with
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Mic
-import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -76,46 +37,26 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mark_vii_demo.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.FirebaseConfigManager
 import com.example.mark_vii_demo.core.data.GeminiClient
 import com.example.mark_vii_demo.core.data.ModelInfo
 import com.example.mark_vii_demo.core.data.SecureUserConfigManager
+import com.example.mark_vii_demo.features.chat.components.AttachmentMenuPopup
 import com.example.mark_vii_demo.features.chat.components.ChatInputBar
 import com.example.mark_vii_demo.features.chat.components.ChatMessageList
-import com.example.mark_vii_demo.features.chat.components.ChatQuickActionsPanel
-import com.example.mark_vii_demo.features.chat.components.ModelChatItem
-import com.example.mark_vii_demo.features.chat.components.ModelMenuContent
-import com.example.mark_vii_demo.features.chat.components.PromptSuggestionBubbles
-import com.example.mark_vii_demo.features.chat.components.UserChatItem
 import com.example.mark_vii_demo.features.chat.components.getSelectedBitmap
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
-import com.example.mark_vii_demo.utils.getPreferredLocale
-import com.example.mark_vii_demo.utils.toRecognizerTag
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -142,6 +83,30 @@ fun ChatScreen(
     // Track haptic feedback based on chunk arrivals
     val lastHapticTrigger = remember { mutableStateOf(0L) }
     val hapticTrigger = chatState.hapticTrigger
+
+    var showAttachMenu by remember { mutableStateOf(false) }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let {
+            val fileName = run {
+                val cursor = context.contentResolver.query(it, null, null, null, null)
+                cursor?.use { c ->
+                    val nameIndex = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (c.moveToFirst() && nameIndex >= 0) c.getString(nameIndex) else "attached_file"
+                } ?: "attached_file"
+            }
+            val mimeType = context.contentResolver.getType(it)
+            chatViewModel.onEvent(
+                ChatUiEvent.AttachFile(
+                    uri = it.toString(),
+                    fileName = fileName,
+                    mimeType = mimeType
+                )
+            )
+        }
+    }
 
     // Trigger haptic when new chunk arrives
     LaunchedEffect(hapticTrigger) {
@@ -272,20 +237,40 @@ fun ChatScreen(
     // Reset model selection when API provider changes
     LaunchedEffect(currentApiProvider) {
         promptItemPosition.value = 0
-        if (freeModels.isNotEmpty()) {
-            ChatData.selected_model = freeModels[0].apiModel
+        when (currentApiProvider) {
+            ApiProvider.OPENROUTER -> {
+                if (freeModels.isNotEmpty()) {
+                    ChatData.selected_model = freeModels[0].apiModel
+                }
+            }
+
+            ApiProvider.GEMINI -> {
+                if (geminiModels.isNotEmpty()) {
+                    ChatData.selected_model = geminiModels[0].apiModel
+                }
+            }
         }
     }
 
     // Set initial model when models load (only once)
     var hasSetInitialModel by remember { mutableStateOf(false) }
-    LaunchedEffect(freeModels) {
-        if (!hasSetInitialModel &&
-            freeModels.isNotEmpty() &&
-            promptItemPosition.value < freeModels.size
-        ) {
-            ChatData.selected_model = freeModels[promptItemPosition.value].apiModel
-            hasSetInitialModel = true
+    LaunchedEffect(freeModels, geminiModels, currentApiProvider) {
+        if (hasSetInitialModel) return@LaunchedEffect
+
+        when (currentApiProvider) {
+            ApiProvider.OPENROUTER -> {
+                if (freeModels.isNotEmpty() && promptItemPosition.value < freeModels.size) {
+                    ChatData.selected_model = freeModels[promptItemPosition.value].apiModel
+                    hasSetInitialModel = true
+                }
+            }
+
+            ApiProvider.GEMINI -> {
+                if (geminiModels.isNotEmpty() && promptItemPosition.value < geminiModels.size) {
+                    ChatData.selected_model = geminiModels[promptItemPosition.value].apiModel
+                    hasSetInitialModel = true
+                }
+            }
         }
     }
 
@@ -341,6 +326,8 @@ fun ChatScreen(
         // Prompt box - overlays at bottom
         ChatInputBar(
             modifier = Modifier.align(Alignment.BottomCenter),
+            onToggleAttachMenu = { showAttachMenu = !showAttachMenu },
+            onDismissAttachMenu = { showAttachMenu = false },
             chatState = chatState,
             bitmap = bitmap,
             onEvent = { event -> chatViewModel.onEvent(event) },
@@ -348,5 +335,43 @@ fun ChatScreen(
             voiceInputLauncher = voiceInputLauncher,
             appColors = appColors
         )
+        // Click elsewhere to turn off the transparent overlay of the menu
+        if (showAttachMenu) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        showAttachMenu = false
+                    }
+            )
+            AttachmentMenuPopup(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 12.dp, bottom = 84.dp),
+                onPickPhoto = {
+                    showAttachMenu = false
+                    imagePicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                onScanPhoto = {
+                    showAttachMenu = false
+                    imagePicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
+                onPickFile = {
+                    showAttachMenu = false
+                    filePickerLauncher.launch(
+                        arrayOf("text/plain", "text/markdown", "application/json", "text/csv")
+                    )
+                },
+                onDismiss = { showAttachMenu = false },
+                visible = showAttachMenu
+            )
+        }
     }
 }
