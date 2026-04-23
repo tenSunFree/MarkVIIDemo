@@ -91,12 +91,6 @@ class ChatViewModel : ViewModel() {
                 }
             }
 
-            is ChatUiEvent.SwitchApiProvider -> {
-                _chatState.update {
-                    it.copy(currentApiProvider = event.provider)
-                }
-            }
-
             else -> {}
         }
     }
@@ -105,13 +99,9 @@ class ChatViewModel : ViewModel() {
         _chatState.update { it.copy(error = null) }
     }
 
-    //    Show welcome guide without making API call
     fun showWelcomeGuide() {
-        // Just enable prompt suggestions, no chat message needed
         _chatState.update {
-            it.copy(
-                showPromptSuggestions = true
-            )
+            it.copy(showPromptSuggestions = true)
         }
     }
 
@@ -144,9 +134,7 @@ class ChatViewModel : ViewModel() {
     private fun getResponse(prompt: String, isRetry: Boolean = false) {
         streamingJob = viewModelScope.launch {
             try {
-                // First check if there are any attachments or text to include in the prompt
                 val finalPrompt = buildPromptWithAttachedFile(prompt)
-
                 val streamingChat = Chat(
                     prompt = "",
                     bitmap = null,
@@ -157,39 +145,48 @@ class ChatViewModel : ViewModel() {
                 _chatState.update {
                     it.copy(chatList = it.chatList.toMutableList().apply { add(streamingChat) })
                 }
-
                 val list = _chatState.value.chatList
                 val historySource = if (list.last().isStreaming) list.dropLast(1) else list
                 val historyFiltered = if (isRetry) {
                     historySource.dropLastWhile { !it.isFromUser }
                 } else historySource
                 val conversationHistory = historyFiltered.filter { !it.isStreaming }
-
-                val chat = ChatData.getStreamingResponse(
+                // Go directly to Gemini
+                val modelToUse = ChatData.selected_model.ifEmpty { "gemini-1.5-flash" }
+                val fullResponse = StringBuilder()
+                GeminiClient.generateContentStream(
                     prompt = finalPrompt,
-                    conversationHistory = conversationHistory
-                ) { chunk ->
-                    _chatState.update { state ->
-                        val updatedList = state.chatList.toMutableList()
-                        val last = updatedList.lastIndex
-                        if (last >= 0) {
-                            updatedList[last] = updatedList[last].copy(
-                                prompt = updatedList[last].prompt + chunk,
-                                isStreaming = true
-                            )
+                    modelName = modelToUse,
+                    conversationHistory = conversationHistory,
+                    onChunk = { chunk ->
+                        fullResponse.append(chunk)
+                        _chatState.update { state ->
+                            val updatedList = state.chatList.toMutableList()
+                            val last = updatedList.lastIndex
+                            if (last >= 0) {
+                                updatedList[last] = updatedList[last].copy(
+                                    prompt = updatedList[last].prompt + chunk,
+                                    isStreaming = true
+                                )
+                            }
+                            state.copy(chatList = updatedList)
                         }
-                        state.copy(chatList = updatedList)
                     }
-                }
-
+                )
+                val finalChat = Chat(
+                    prompt = fullResponse.toString(),
+                    bitmap = null,
+                    isFromUser = false,
+                    modelUsed = modelToUse,
+                    isStreaming = false
+                )
                 _chatState.update { state ->
                     val updatedList = state.chatList.toMutableList()
                     val last = updatedList.lastIndex
-                    if (last >= 0) updatedList[last] = chat.copy(isStreaming = false)
+                    if (last >= 0) updatedList[last] = finalChat
                     state.copy(
                         chatList = updatedList,
                         isGeneratingResponse = false,
-                        // 送出後清除附件
                         attachedFileUri = null,
                         attachedFileName = null,
                         attachedFileMimeType = null
@@ -226,34 +223,13 @@ class ChatViewModel : ViewModel() {
                 _chatState.update {
                     it.copy(chatList = it.chatList.toMutableList().apply { add(streamingChat) })
                 }
-
-                val conversationHistory = _chatState.value.chatList
-                    .dropLast(1)
-                    .filter { !it.isStreaming }
-
-                val currentProvider = _chatState.value.currentApiProvider
-                val chat = when (currentProvider) {
-                    ApiProvider.GEMINI -> {
-                        val geminiModel =
-                            ChatData.selected_model.ifBlank { "gemini-1.5-flash" }
-                        GeminiClient.generateContentWithImage(
-                            prompt = prompt,
-                            bitmap = bitmap,
-                            modelName = geminiModel
-                        )
-                    }
-
-                    ApiProvider.OPENROUTER -> {
-                        // Ask mode defaults to OpenRouter, but the configured free models are text-only.
-                        // Fall back to Gemini for image prompts so image sending still works.
-                        GeminiClient.generateContentWithImage(
-                            prompt = prompt,
-                            bitmap = bitmap,
-                            modelName = "gemini-1.5-flash"
-                        )
-                    }
-                }
-
+                // All images are from Gemini
+                val geminiModel = ChatData.selected_model.ifBlank { "gemini-1.5-flash" }
+                val chat = GeminiClient.generateContentWithImage(
+                    prompt = prompt,
+                    bitmap = bitmap,
+                    modelName = geminiModel
+                )
                 _chatState.update { state ->
                     val updatedList = state.chatList.toMutableList()
                     val last = updatedList.lastIndex
@@ -270,26 +246,17 @@ class ChatViewModel : ViewModel() {
         }
     }
 
-    /**
-     * 如果有附加文字檔，把內容拼進 prompt
-     */
     private suspend fun buildPromptWithAttachedFile(originalPrompt: String): String {
         val state = _chatState.value
         val fileUri = state.attachedFileUri ?: return originalPrompt
         val fileName = state.attachedFileName ?: return originalPrompt
         val mimeType = state.attachedFileMimeType ?: ""
-
-        // 只有文字類型才讀取內容
         val isTextType = mimeType.startsWith("text/") ||
                 mimeType == "application/json" ||
                 mimeType == "application/xml"
-
         if (!isTextType) return originalPrompt
-
         return try {
-            val fileContent = withContext(Dispatchers.IO) {
-                // 這裡無法直接拿 Context，所以用 fileContent 先存在 state
-                // 實際讀取在 ChatScreen 那層做，這裡只組字串
+            withContext(Dispatchers.IO) {
                 state.attachedFileUri
             }
             """
@@ -310,9 +277,8 @@ ${state.attachedFileUri}
         val parts = errorMessage.split("|", limit = 2)
         val errorCode = if (parts.size == 2) parts[0] else "UNKNOWN_ERROR"
         val errorDetails = if (parts.size == 2) parts[1] else errorMessage
-
         val formattedError = "❌ Error: $errorCode\n\n$errorDetails"
-
+        Log.d("ChatViewModel", "ChatViewModel, handleError, formattedError: $formattedError")
         val errorChat = Chat(
             prompt = formattedError,
             bitmap = null,
@@ -321,7 +287,6 @@ ${state.attachedFileUri}
             isStreaming = false,
             isError = true
         )
-
         _chatState.update {
             it.copy(
                 chatList = it.chatList.toMutableList().apply { add(errorChat) },

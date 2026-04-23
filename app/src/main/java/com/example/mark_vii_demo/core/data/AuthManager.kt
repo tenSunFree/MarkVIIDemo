@@ -17,6 +17,7 @@ import java.util.UUID
 
 /**
  * Manages Firebase Authentication and Google Sign-In
+ * Manage Firebase Authentication and Google Sign-In. Listen for login state changes and provide the currentUser's StateFlow to the entire app.
  */
 object AuthManager {
 

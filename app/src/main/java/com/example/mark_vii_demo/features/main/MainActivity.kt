@@ -57,8 +57,8 @@ import com.example.mark_vii_demo.features.main.components.ApiKeySetupDialog
 import com.example.mark_vii_demo.features.main.components.InfoSetting
 import com.example.mark_vii_demo.core.data.AppTheme
 import com.example.mark_vii_demo.core.data.AuthManager
-import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.ChatHistoryManager
+import com.example.mark_vii_demo.core.data.GeminiClient
 import com.example.mark_vii_demo.core.data.SecureUserConfigManager
 import com.example.mark_vii_demo.core.data.ThemePreferences
 import com.example.mark_vii_demo.features.chat.ChatUiEvent
@@ -104,23 +104,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onActivityResult(
-        requestCode: Int, resultCode: Int, data: Intent?
-    ) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (requestCode == AuthManager.RC_SIGN_IN) {
             lifecycleScope.launch {
                 val result = AuthManager.handleSignInResult(data)
                 result.onSuccess {
-                    // Sign-in successful, state will update automatically
                     isSigningInState.value = false
                     runOnUiThread {
                         Toast.makeText(this@MainActivity, "Sign in successful!", Toast.LENGTH_SHORT)
                             .show()
                     }
                 }.onFailure { error ->
-                    // Sign-in failed, reset loading state
                     isSigningInState.value = false
                     runOnUiThread {
                         Toast.makeText(
@@ -137,32 +132,25 @@ class MainActivity : AppCompatActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-//        Thread.sleep(1000) // splash screen delay
-        installSplashScreen()  // splash screen ui
-        // Initialize ChatHistoryManager
+        installSplashScreen()
         ChatHistoryManager.init(applicationContext)
-        // Initialize ThemePreferences
         ThemePreferences.init(applicationContext)
-        // Initialize secure local OpenRouter key storage
+        // Initialize SecureUserConfigManager (store only userName, no longer store OpenRouter key)
         SecureUserConfigManager.init(applicationContext)
-        // Initialize TextToSpeech
+        GeminiClient.updateApiKey(SecureUserConfigManager.getGeminiApiKey())
         textToSpeech = TextToSpeech(this) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 isTtsInitialized = true
-                // Language will be set dynamically based on detected content
             }
         }
         setContent {
-            // Observe theme changes
             val currentTheme by ThemePreferences.currentTheme.collectAsState()
             val darkTheme = when (currentTheme) {
                 AppTheme.LIGHT -> false
                 AppTheme.DARK -> true
                 AppTheme.SYSTEM_DEFAULT -> isSystemInDarkTheme()
             }
-            // Set window colors based on theme
             val backgroundColor = if (darkTheme) Color.Black else Color.White
-            val statusBarColor = if (darkTheme) Color.Black else Color.White
             SideEffect {
                 window.decorView.setBackgroundColor(backgroundColor.toArgb())
                 window.statusBarColor = Color.Black.toArgb()
@@ -172,56 +160,30 @@ class MainActivity : AppCompatActivity() {
             }
             MarkVIITheme(darkTheme = darkTheme) {
                 var opentimes by remember { mutableIntStateOf(0) }
-                // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.Companion.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
-                )
-                {
-//                    for switching between from home screen to infoTab
+                ) {
                     val navController = rememberNavController()
-                    NavHost(navController = navController, startDestination = "home", builder = {
+                    NavHost(navController = navController, startDestination = "home") {
                         composable("home") {
                             opentimes++
-                            // ViewModel needs to be at this scope to be accessible by both topBar and content
                             val chaViewModel = viewModel<ChatViewModel>()
                             val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
                             val coroutineScope = rememberCoroutineScope()
-                            var showSettings by remember { mutableStateOf(false) } // Settings screen state
-                            val isSigningIn by isSigningInState.collectAsState() // Sign-in loading state from Activity
+                            var showSettings by remember { mutableStateOf(false) }
+                            val isSigningIn by isSigningInState.collectAsState()
                             val chatState by chaViewModel.chatState.collectAsState()
                             val userConfig by SecureUserConfigManager.config.collectAsState()
-                            val appColors = LocalAppColors.current // Get theme colors
-                            LaunchedEffect(userConfig.openRouterApiKey) {
-                                if (userConfig.openRouterApiKey.isNotEmpty()) {
-                                    ChatData.updateApiKey(userConfig.openRouterApiKey)
-                                }
-                            }
-                            Box(modifier = Modifier.Companion.fillMaxSize()) {
+                            val appColors = LocalAppColors.current
+
+                            Box(modifier = Modifier.fillMaxSize()) {
                                 ModalNavigationDrawer(
-                                    drawerState = drawerState, drawerContent = {
-                                        ModalDrawerSheet {
-                                            // DrawerContent(
-                                            //     chatViewModel = chaViewModel,
-                                            //     onDismiss = {
-                                            //         coroutineScope.launch {
-                                            //             drawerState.close()
-                                            //         }
-                                            //     },
-                                            //     onSettingsClick = {
-                                            //         coroutineScope.launch {
-                                            //             drawerState.close()
-                                            //         }
-                                            //         showSettings = true
-                                            //     },
-                                            //     onSigningInChanged = { signing ->
-                                            //         isSigningInState.value = signing
-                                            //     })
-                                        }
-                                    }, gesturesEnabled = true
+                                    drawerState = drawerState,
+                                    drawerContent = { ModalDrawerSheet { } },
+                                    gesturesEnabled = true
                                 ) {
                                     Scaffold(
-//                                top bar items
                                         topBar = {
                                             MainTopBar(
                                                 drawerState = drawerState,
@@ -230,12 +192,12 @@ class MainActivity : AppCompatActivity() {
                                                 actionText = "登入",
                                             )
                                         },
-                                        // Show welcome guide once when app opens (no API call)
                                         bottomBar = {
                                             if (opentimes == 1) {
                                                 chaViewModel.showWelcomeGuide()
                                             }
-                                        }) {
+                                        }
+                                    ) {
                                         ChatScreen(
                                             paddingValues = it,
                                             chatViewModel = chaViewModel,
@@ -245,49 +207,36 @@ class MainActivity : AppCompatActivity() {
                                             voiceInputLauncher = voiceInputLauncher,
                                             isTtsInitialized = isTtsInitialized,
                                             textToSpeech = textToSpeech,
-                                            onSpeakText = { text -> speakText(text) })  // starting chat screen ui
+                                            onSpeakText = { text -> speakText(text) }
+                                        )
                                     }
-                                } // End ModalNavigationDrawer
-                                // Settings screen overlay
+                                }
+
                                 if (showSettings) {
-                                    // Handle back button when settings is open
-                                    BackHandler {
-                                        showSettings = false
-                                    }
+                                    BackHandler { showSettings = false }
                                     SettingsScreen(
                                         onBackClick = { showSettings = false },
                                         onSignOut = {
                                             chaViewModel.onEvent(ChatUiEvent.SignOut)
                                             showSettings = false
                                         },
-                                        onResetApiKey = {
-                                            SecureUserConfigManager.clearCredentials()
-                                            ChatData.clearApiKey()
-                                            ChatData.cachedFreeModels = emptyList()
-                                            ChatData.cachedFreeModelsKey = ""
-                                            showSettings = false
-                                        },
-                                        onThemeChanged = { /* Theme change is handled via StateFlow */ })
+                                        onThemeChanged = { }
+                                    )
                                 }
-                                // Loading overlay during sign-in - covers entire app
                                 if (isSigningIn) {
                                     Box(
-                                        modifier = Modifier.Companion
+                                        modifier = Modifier
                                             .fillMaxSize()
-                                            .background(
-                                                androidx.compose.ui.graphics.Color.Companion.Black.copy(
-                                                    alpha = 0.7f
-                                                )
-                                            )
+                                            .background(Color.Black.copy(alpha = 0.7f))
                                             .clickable(enabled = false) { },
-                                        contentAlignment = Alignment.Companion.Center
+                                        contentAlignment = Alignment.Center
                                     ) {
                                         Column(
-                                            horizontalAlignment = Alignment.Companion.CenterHorizontally,
+                                            horizontalAlignment = Alignment.CenterHorizontally,
                                             verticalArrangement = Arrangement.spacedBy(16.dp)
                                         ) {
                                             CircularProgressIndicator(
-                                                modifier = Modifier.Companion.size(56.dp),
+                                                modifier = Modifier.size(56.dp),
                                                 color = appColors.accent,
                                                 strokeWidth = 5.dp
                                             )
@@ -295,34 +244,34 @@ class MainActivity : AppCompatActivity() {
                                                 text = "Signing in with Google...",
                                                 fontSize = 18.sp,
                                                 color = MaterialTheme.colorScheme.onSurface,
-                                                fontWeight = FontWeight.Companion.Medium
+                                                fontWeight = FontWeight.Medium
                                             )
                                         }
                                     }
                                 }
+                                // The settings dialog box is only displayed if userName is not set.
                                 if (!userConfig.isConfigured) {
                                     ApiKeySetupDialog(
                                         initialUserName = userConfig.userName,
-                                        initialApiKey = userConfig.openRouterApiKey,
-                                        onConfirm = { name, key ->
-                                            SecureUserConfigManager.saveCredentials(name, key)
-                                            ChatData.updateApiKey(key)
+                                        initialGeminiApiKey = userConfig.geminiApiKey,
+                                        onConfirm = { name, apiKey ->
+                                            SecureUserConfigManager.saveCredentials(name, apiKey)
+                                            GeminiClient.updateApiKey(apiKey)
                                         }
                                     )
                                 }
-                            } // Box
+                            }
                         }
                         composable("info_screen") {
-                            InfoSetting() // starting infoTab ui (About section)
+                            InfoSetting()
                         }
-                    })
+                    }
                 }
             }
         }
     }
 
     override fun onDestroy() {
-        // Shutdown TextToSpeech to free resources
         textToSpeech?.stop()
         textToSpeech?.shutdown()
         super.onDestroy()
@@ -330,13 +279,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun speakText(text: String) {
         if (textToSpeech == null) return
-        // Detect language using MLKit
         val languageIdentifier = LanguageIdentification.getClient(
             LanguageIdentificationOptions.Builder().setConfidenceThreshold(0.34f).build()
         )
         languageIdentifier.identifyLanguage(text).addOnSuccessListener { languageCode ->
             if (languageCode != "und") {
-                // Map MLKit language codes to Locale
                 val locale = when (languageCode) {
                     "zh" -> Locale.SIMPLIFIED_CHINESE
                     "zh-Hant" -> Locale.TRADITIONAL_CHINESE
@@ -353,17 +300,13 @@ class MainActivity : AppCompatActivity() {
                     "en" -> Locale.US
                     else -> Locale.US
                 }
-                // Set language if available
                 val result = textToSpeech?.setLanguage(locale)
                 if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                    // Fallback to English if language not supported
                     textToSpeech?.setLanguage(Locale.US)
                 }
             }
-            // Speak the text after setting language
             speakTextWithLanguage(text)
         }.addOnFailureListener {
-            // If detection fails, use English as fallback
             textToSpeech?.setLanguage(Locale.US)
             speakTextWithLanguage(text)
         }
@@ -371,20 +314,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun speakTextWithLanguage(text: String) {
         if (textToSpeech == null) return
-        val maxLength = TextToSpeech.getMaxSpeechInputLength() - 100 // Buffer
+        val maxLength = TextToSpeech.getMaxSpeechInputLength() - 100
         if (text.length <= maxLength) {
             textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
             return
         }
-        // Flush existing
         textToSpeech?.speak("", TextToSpeech.QUEUE_FLUSH, null, null)
         var remainingText = text
         while (remainingText.isNotEmpty()) {
             val chunk = if (remainingText.length > maxLength) {
-                // Find a good break point
                 val splitIndex = remainingText.lastIndexOf('.', maxLength).takeIf { it > 0 }
                     ?: remainingText.lastIndexOf(' ', maxLength).takeIf { it > 0 } ?: maxLength
-
                 remainingText.substring(0, splitIndex)
             } else {
                 remainingText

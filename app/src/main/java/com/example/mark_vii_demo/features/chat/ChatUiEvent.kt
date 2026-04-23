@@ -16,8 +16,6 @@ sealed class ChatUiEvent {
 
     object StopStreaming : ChatUiEvent()
 
-    data class SwitchApiProvider(val provider: ApiProvider) : ChatUiEvent()
-
     object SignOut : ChatUiEvent()
 
     // Attach file event
@@ -29,7 +27,3 @@ sealed class ChatUiEvent {
 
     object RemoveAttachedFile : ChatUiEvent()
 }
-
-
-
-

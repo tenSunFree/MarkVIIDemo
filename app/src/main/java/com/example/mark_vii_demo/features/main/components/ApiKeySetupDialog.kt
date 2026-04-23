@@ -2,15 +2,12 @@ package com.example.mark_vii_demo.features.main.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -24,8 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
@@ -33,30 +28,28 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ApiKeySetupDialog(
     initialUserName: String = "",
-    initialApiKey: String = "",
-    onConfirm: (String, String) -> Unit
+    initialGeminiApiKey: String = "",
+    onConfirm: (userName: String, geminiApiKey: String) -> Unit
 ) {
     var userName by remember { mutableStateOf(initialUserName) }
-    var apiKey by remember { mutableStateOf(initialApiKey) }
-    var showApiKey by remember { mutableStateOf(false) }
+    var geminiApiKey by remember { mutableStateOf(initialGeminiApiKey) }
+    var apiKeyVisible by remember { mutableStateOf(false) }
     var submitted by remember { mutableStateOf(false) }
-    var clipboardError by remember { mutableStateOf<String?>(null) }
 
-    val clipboardManager = LocalClipboardManager.current
     val normalizedName = userName.trim()
-    val normalizedKey = apiKey.trim()
+    val normalizedApiKey = geminiApiKey.trim()
     val nameHasError = submitted && normalizedName.isBlank()
-    val keyHasError = submitted && !isValidOpenRouterKey(normalizedKey)
+    val apiKeyHasError = submitted && normalizedApiKey.isBlank()
 
     AlertDialog(
         onDismissRequest = { },
         title = {
-            Text(text = "Set up OpenRouter")
+            Text(text = "Welcome to Mark VII")
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Enter your name and paste the key you created in OpenRouter.",
+                    text = "Please enter your name and Gemini API Key to get started.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -64,72 +57,46 @@ fun ApiKeySetupDialog(
                     value = userName,
                     onValueChange = { userName = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Name") },
+                    label = { Text("Your Name") },
                     singleLine = true,
                     isError = nameHasError,
                     supportingText = {
-                        if (nameHasError) {
-                            Text("Name cannot be blank")
-                        }
+                        if (nameHasError) Text("Name cannot be blank")
                     }
                 )
 
                 OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
+                    value = geminiApiKey,
+                    onValueChange = { geminiApiKey = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("OpenRouter Key") },
+                    label = { Text("Gemini API Key") },
                     singleLine = true,
-                    isError = keyHasError,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    visualTransformation = if (showApiKey) {
+                    isError = apiKeyHasError,
+                    visualTransformation = if (apiKeyVisible)
                         VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
+                    else
+                        PasswordVisualTransformation(),
                     trailingIcon = {
-                        Row {
-                            IconButton(
-                                onClick = {
-                                    val pastedText =
-                                        clipboardManager.getText()?.text.orEmpty().trim()
-                                    if (pastedText.isBlank()) {
-                                        clipboardError = "Clipboard is empty"
-                                    } else {
-                                        apiKey = pastedText
-                                        clipboardError = null
-                                    }
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ContentPaste,
-                                    contentDescription = "Paste key"
-                                )
-                            }
-                            IconButton(onClick = { showApiKey = !showApiKey }) {
-                                Icon(
-                                    imageVector = if (showApiKey) {
-                                        Icons.Rounded.VisibilityOff
-                                    } else {
-                                        Icons.Rounded.Visibility
-                                    },
-                                    contentDescription = if (showApiKey) "Hide key" else "Show key"
-                                )
-                            }
+                        IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
+                            Icon(
+                                imageVector = if (apiKeyVisible)
+                                    Icons.Filled.Visibility
+                                else
+                                    Icons.Filled.VisibilityOff,
+                                contentDescription = if (apiKeyVisible) "Hide" else "Show"
+                            )
                         }
                     },
                     supportingText = {
-                        when {
-                            keyHasError -> Text("Key must start with sk-or-v1-")
-                            clipboardError != null -> Text(clipboardError.orEmpty())
-                        }
+                        if (apiKeyHasError) Text("Gemini API Key cannot be blank")
                     }
                 )
 
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "You can create a key from your OpenRouter account settings.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Your API Key is stored securely on this device only.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
                 )
             }
         },
@@ -137,18 +104,14 @@ fun ApiKeySetupDialog(
             Button(
                 onClick = {
                     submitted = true
-                    if (normalizedName.isNotBlank() && isValidOpenRouterKey(normalizedKey)) {
-                        onConfirm(normalizedName, normalizedKey)
+                    if (normalizedName.isNotBlank() && normalizedApiKey.isNotBlank()) {
+                        onConfirm(normalizedName, normalizedApiKey)
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Confirm")
+                Text("Get Started")
             }
         }
     )
-}
-
-private fun isValidOpenRouterKey(key: String): Boolean {
-    return key.startsWith("sk-or-v1-")
 }

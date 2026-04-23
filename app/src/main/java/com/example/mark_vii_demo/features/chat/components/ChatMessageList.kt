@@ -114,17 +114,17 @@ fun ChatMessageList(
                             modelUsed = chat.modelUsed,
                             isStreaming = chat.isStreaming,
                             isError = chat.isError,
-                            freeModels = freeModels,
+                            // freeModels = freeModels,
                             geminiModels = geminiModels,
-                            currentApiProvider = chatState.currentApiProvider,
-                            hasImage = previousUserChat?.bitmap != null,
+                            // currentApiProvider = chatState.currentApiProvider,
+                            // hasImage = previousUserChat?.bitmap != null,
                             onRetry = { _ ->
                                 onRetry(
                                     previousUserChat?.prompt ?: "",
                                     previousUserChat?.bitmap
                                 )
                             },
-                            onApiSwitch = onApiSwitch,
+                            // onApiSwitch = onApiSwitch,
                             isTtsReady = isTtsInitialized && textToSpeech != null,
                             isTtsSpeaking = textToSpeech?.isSpeaking == true,
                             onToggleTts = { cleanText ->

@@ -61,33 +61,33 @@ fun ModelMenuContent(
                 style = MaterialTheme.typography.bodyMedium
             )
             // Show Reload only for OpenRouter
-            if (currentApiProvider == ApiProvider.OPENROUTER && onReloadModels != null) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(appColors.accent.copy(alpha = 0.15f))
-                        .clickable { onReloadModels() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Refresh,
-                            contentDescription = "Reload models",
-                            tint = appColors.accent,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = "Reload Models",
-                            color = appColors.accent,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-            }
+            // if (currentApiProvider == ApiProvider.OPENROUTER && onReloadModels != null) {
+            //     Box(
+            //         modifier = Modifier
+            //             .clip(RoundedCornerShape(10.dp))
+            //             .background(appColors.accent.copy(alpha = 0.15f))
+            //             .clickable { onReloadModels() }
+            //             .padding(horizontal = 16.dp, vertical = 8.dp)
+            //     ) {
+            //         Row(
+            //             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            //             verticalAlignment = Alignment.CenterVertically
+            //         ) {
+            //             Icon(
+            //                 imageVector = Icons.Rounded.Refresh,
+            //                 contentDescription = "Reload models",
+            //                 tint = appColors.accent,
+            //                 modifier = Modifier.size(18.dp)
+            //             )
+            //             Text(
+            //                 text = "Reload Models",
+            //                 color = appColors.accent,
+            //                 fontSize = 13.sp,
+            //                 fontWeight = FontWeight.SemiBold
+            //             )
+            //         }
+            //     }
+            // }
         }
     } else {
         currentModels.forEachIndexed { index, model ->

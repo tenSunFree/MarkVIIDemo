@@ -7,7 +7,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.ExitToApp
-import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,12 +18,14 @@ import com.example.mark_vii_demo.core.data.AppTheme
 import com.example.mark_vii_demo.core.data.ThemePreferences
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
 
+/**
+ * The settings page now only includes: theme switching and logout.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
     onSignOut: () -> Unit,
-    onResetApiKey: () -> Unit = {},
     onThemeChanged: (AppTheme) -> Unit = {}
 ) {
     var selectedTheme by remember { mutableStateOf(ThemePreferences.getTheme()) }
@@ -72,7 +73,6 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
             )
-
             // Theme Selector
             Box {
                 Button(
@@ -92,9 +92,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f)
-                        ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Theme",
                                 fontSize = 16.sp,
@@ -119,8 +117,6 @@ fun SettingsScreen(
                         )
                     }
                 }
-
-                // Theme dropdown menu
                 DropdownMenu(
                     expanded = showThemeMenu,
                     onDismissRequest = { showThemeMenu = false },
@@ -152,7 +148,6 @@ fun SettingsScreen(
                     }
                 }
             }
-
             // Account Section
             Text(
                 text = "Account",
@@ -161,46 +156,6 @@ fun SettingsScreen(
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
             )
-
-            Button(
-                onClick = onResetApiKey,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = appColors.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Key,
-                        contentDescription = "Reset OpenRouter key",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "Reset OpenRouter Key",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = "Enter a new local API key",
-                            fontSize = 13.sp,
-                            color = appColors.textSecondary
-                        )
-                    }
-                }
-            }
-
             // Logout Button
             Button(
                 onClick = onSignOut,

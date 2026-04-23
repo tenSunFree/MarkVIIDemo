@@ -29,7 +29,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.mark_vii_demo.features.chat.ApiProvider
 import com.example.mark_vii_demo.core.data.ChatData
 import com.example.mark_vii_demo.core.data.ModelInfo
 import com.example.mark_vii_demo.ui.theme.LocalAppColors
@@ -37,13 +36,8 @@ import com.example.mark_vii_demo.utils.PdfGenerator
 import kotlinx.coroutines.delay
 
 /**
- * model chat text bubble
- * Extracted ModelChatItem
- *
- * Key changes:
- * - No longer directly depend on MainActivity's textToSpeech / speakText / isTtsInitialized
- * - Switched to being injected by the caller:
- *   isTtsReady, isTtsSpeaking, onToggleTts
+ * Model chat text bubble
+ * The dialog box now only displays the list of Gemini models.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -53,27 +47,19 @@ fun ModelChatItem(
     modelUsed: String = "",
     onRetry: (String) -> Unit = {},
     isStreaming: Boolean = false,
-    freeModels: List<ModelInfo> = emptyList(),
     geminiModels: List<ModelInfo> = emptyList(),
-    currentApiProvider: ApiProvider = ApiProvider.GEMINI,
-    hasImage: Boolean = false,
     isError: Boolean = false,
-    onApiSwitch: (ApiProvider) -> Unit = {},
-    // Text-to-speech (TTS) injected from outside
+    // Text-to-speech
     isTtsReady: Boolean = false,
     isTtsSpeaking: Boolean = false,
     onToggleTts: (String) -> Unit = {},
-    // If you want to inject PDF behavior externally,
-    // you can use onExportSave / onExportShare instead,
-    // but for now keep direct PdfGenerator calls (minimal changes).
 ) {
     val appColors = LocalAppColors.current
     val context = LocalContext.current
     val hapticFeedback = LocalHapticFeedback.current
     var showModelSelector by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
-    var selectedApiProvider by remember { mutableStateOf(currentApiProvider) }
-    // Unified Smooth Streaming Engine
+    // Smooth Streaming Engine
     var displayedText by remember { mutableStateOf("") }
     LaunchedEffect(isStreaming) {
         if (isStreaming) {
@@ -96,8 +82,7 @@ fun ModelChatItem(
                         diff > 5 -> 1 to 15L
                         else -> 1 to 30L
                     }
-                    val nextIndex =
-                        (current.length + charsToProcess).coerceAtMost(target.length)
+                    val nextIndex = (current.length + charsToProcess).coerceAtMost(target.length)
                     val newText = target.substring(0, nextIndex)
                     displayedText = newText
                     if (newText.length % 3 == 0) {
@@ -113,6 +98,7 @@ fun ModelChatItem(
             }
         }
     }
+
     val brandName = remember(modelUsed) {
         if (modelUsed.isNotEmpty()) {
             val brand = modelUsed.substringBefore("/")
@@ -120,9 +106,7 @@ fun ModelChatItem(
                 ?: brand.replaceFirstChar { it.uppercase() }
         } else ""
     }
-    val headerText = remember(brandName) {
-        if (brandName.isNotEmpty()) "Mark VII  x  $brandName" else "Mark VII"
-    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -134,20 +118,6 @@ fun ModelChatItem(
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                // Text(
-                //     text = headerText,
-                //     fontSize = 18.sp,
-                //     fontFamily = FontFamily(Font(R.font.typographica)),
-                //     color = MaterialTheme.colorScheme.onSurface
-                // )
-                // if (modelUsed.isNotEmpty()) {
-                //     Text(
-                //         text = modelUsed.replace(":free", ""),
-                //         fontSize = 12.sp,
-                //         color = appColors.textSecondary,
-                //         modifier = Modifier.padding(top = 2.dp)
-                //     )
-                // }
                 if (isStreaming) {
                     StreamingIndicator(
                         accentColor = Color.White,
@@ -181,6 +151,7 @@ fun ModelChatItem(
                 }
             }
         }
+
         // Action buttons row
         if (!isStreaming && response.isNotEmpty()) {
             Row(
@@ -203,7 +174,6 @@ fun ModelChatItem(
                             .replace("---", "")
                             .replace("- ", "• ")
                             .trim()
-
                         val clipboard =
                             context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                         val clip = android.content.ClipData.newPlainText("response", cleanText)
@@ -241,7 +211,7 @@ fun ModelChatItem(
                 ) {
                     TtsIcon(isSpeaking = isTtsSpeaking)
                 }
-                // Retry
+                // Retry — Click to display the Gemini model menu
                 IconButton(
                     onClick = { showModelSelector = true },
                     modifier = Modifier.size(40.dp)
@@ -286,7 +256,7 @@ fun ModelChatItem(
                 }
             }
         }
-        // Model selector dialog
+        // Retry — Gemini model selector dialog
         if (showModelSelector) {
             AlertDialog(
                 onDismissRequest = { showModelSelector = false },
@@ -294,7 +264,7 @@ fun ModelChatItem(
                 shape = RoundedCornerShape(20.dp),
                 title = {
                     Text(
-                        text = "Retry with Model",
+                        text = "Retry with Gemini Model",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
@@ -302,90 +272,19 @@ fun ModelChatItem(
                 },
                 text = {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Gemini
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (selectedApiProvider == ApiProvider.GEMINI)
-                                            appColors.accent.copy(alpha = 0.2f)
-                                        else appColors.surfaceVariant
-                                    )
-                                    .clickable {
-                                        selectedApiProvider = ApiProvider.GEMINI
-                                        onApiSwitch(ApiProvider.GEMINI)
-                                    }
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "Gemini",
-                                    color = if (selectedApiProvider == ApiProvider.GEMINI)
-                                        appColors.accent else appColors.textSecondary,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (selectedApiProvider == ApiProvider.GEMINI)
-                                        FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            // OpenRouter
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (selectedApiProvider == ApiProvider.OPENROUTER)
-                                            appColors.accent.copy(alpha = 0.2f)
-                                        else appColors.surfaceVariant
-                                    )
-                                    .clickable {
-                                        if (hasImage) {
-                                            Toast.makeText(
-                                                context,
-                                                "⚠️ OpenRouter doesn't support images. Please use Gemini for image queries.",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        } else {
-                                            selectedApiProvider = ApiProvider.OPENROUTER
-                                            onApiSwitch(ApiProvider.OPENROUTER)
-                                        }
-                                    }
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "OpenRouter",
-                                    color = if (selectedApiProvider == ApiProvider.OPENROUTER)
-                                        appColors.accent else appColors.textSecondary,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (selectedApiProvider == ApiProvider.OPENROUTER)
-                                        FontWeight.SemiBold else FontWeight.Normal
-                                )
-                            }
-                        }
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp)
+                                .padding(bottom = 8.dp)
                                 .height(1.dp)
                                 .background(appColors.divider)
                         )
-                        val currentModels =
-                            if (selectedApiProvider == ApiProvider.GEMINI) geminiModels else freeModels
                         LazyColumn(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = 400.dp)
                         ) {
-                            if (currentModels.isEmpty()) {
+                            if (geminiModels.isEmpty()) {
                                 item {
                                     Text(
                                         text = "Loading models...",
@@ -394,7 +293,7 @@ fun ModelChatItem(
                                     )
                                 }
                             } else {
-                                itemsIndexed(currentModels) { _, model ->
+                                itemsIndexed(geminiModels) { _, model ->
                                     Box(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -406,17 +305,9 @@ fun ModelChatItem(
                                                 else Color.Transparent
                                             )
                                             .clickable {
-                                                if (hasImage && selectedApiProvider == ApiProvider.OPENROUTER) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Cannot use OpenRouter with images. Switch to Gemini.",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                } else {
-                                                    ChatData.selected_model = model.apiModel
-                                                    showModelSelector = false
-                                                    onRetry(model.apiModel)
-                                                }
+                                                ChatData.selected_model = model.apiModel
+                                                showModelSelector = false
+                                                onRetry(model.apiModel)
                                             }
                                             .padding(12.dp)
                                     ) {
@@ -447,15 +338,14 @@ fun ModelChatItem(
                 confirmButton = {
                     TextButton(
                         onClick = { showModelSelector = false },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = appColors.textSecondary
-                        )
+                        colors = ButtonDefaults.textButtonColors(contentColor = appColors.textSecondary)
                     ) {
                         Text("Cancel", fontSize = 15.sp)
                     }
                 }
             )
         }
+
         // Export Dialog
         if (showExportDialog) {
             AlertDialog(

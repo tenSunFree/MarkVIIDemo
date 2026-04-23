@@ -11,17 +11,8 @@ data class FirebaseModelInfo(
 )
 
 /**
- * Data class to hold Firebase API keys configuration
- */
-data class FirebaseApiKeys(
-    val openrouterApiKey: String = ""
-)
-
-/**
  * Data class to hold complete Firebase configuration
  */
 data class FirebaseConfig(
-    val models: List<FirebaseModelInfo> = emptyList(),
-    val apiKeys: FirebaseApiKeys = FirebaseApiKeys()
+    val models: List<FirebaseModelInfo> = emptyList()
 )
-

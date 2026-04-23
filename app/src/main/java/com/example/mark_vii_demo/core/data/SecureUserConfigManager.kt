@@ -10,14 +10,14 @@ import kotlinx.coroutines.flow.asStateFlow
 
 data class UserApiKeyConfig(
     val userName: String = "",
-    val openRouterApiKey: String = "",
+    val geminiApiKey: String = "",
     val isConfigured: Boolean = false
 )
 
 object SecureUserConfigManager {
     private const val PREFS_NAME = "secure_user_config"
     private const val KEY_USER_NAME = "user_name"
-    private const val KEY_OPENROUTER_API_KEY = "openrouter_api_key"
+    private const val KEY_GEMINI_API_KEY = "gemini_api_key"
 
     private lateinit var prefs: SharedPreferences
 
@@ -40,49 +40,43 @@ object SecureUserConfigManager {
         loadConfig()
     }
 
-    fun saveCredentials(userName: String, openRouterApiKey: String) {
+    fun saveCredentials(userName: String, geminiApiKey: String) {
         val normalizedName = userName.trim()
-        val normalizedKey = openRouterApiKey.trim()
+        val normalizedKey = geminiApiKey.trim()
 
         prefs.edit()
             .putString(KEY_USER_NAME, normalizedName)
-            .putString(KEY_OPENROUTER_API_KEY, normalizedKey)
+            .putString(KEY_GEMINI_API_KEY, normalizedKey)
             .apply()
 
         _config.value = UserApiKeyConfig(
             userName = normalizedName,
-            openRouterApiKey = normalizedKey,
-            isConfigured = hasValidCredentials(normalizedName, normalizedKey)
+            geminiApiKey = normalizedKey,
+            isConfigured = normalizedName.isNotBlank() && normalizedKey.isNotBlank()
         )
     }
 
     fun clearCredentials() {
         prefs.edit()
             .remove(KEY_USER_NAME)
-            .remove(KEY_OPENROUTER_API_KEY)
+            .remove(KEY_GEMINI_API_KEY)
             .apply()
-
         _config.value = UserApiKeyConfig()
     }
 
-    fun getOpenRouterApiKey(): String = _config.value.openRouterApiKey
-
     fun getUserName(): String = _config.value.userName
+
+    fun getGeminiApiKey(): String = _config.value.geminiApiKey
 
     fun hasCredentials(): Boolean = _config.value.isConfigured
 
     private fun loadConfig() {
         val userName = prefs.getString(KEY_USER_NAME, "").orEmpty().trim()
-        val apiKey = prefs.getString(KEY_OPENROUTER_API_KEY, "").orEmpty().trim()
-
+        val geminiApiKey = prefs.getString(KEY_GEMINI_API_KEY, "").orEmpty().trim()
         _config.value = UserApiKeyConfig(
             userName = userName,
-            openRouterApiKey = apiKey,
-            isConfigured = hasValidCredentials(userName, apiKey)
+            geminiApiKey = geminiApiKey,
+            isConfigured = userName.isNotBlank() && geminiApiKey.isNotBlank()
         )
-    }
-
-    private fun hasValidCredentials(userName: String, apiKey: String): Boolean {
-        return userName.isNotBlank() && apiKey.startsWith("sk-or-v1-")
     }
 }
